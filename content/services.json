@@ -1,0 +1,546 @@
+{
+  "preventative-maintenance": {
+    "slug": "preventative-maintenance",
+    "metaTitle": "Preventative Maintenance — Elite Sports Floor Care",
+    "metaDescription": "A programmed annual maintenance cycle that keeps your timber sports floor's coating ahead of the wear, with a written report and forward plan every visit.",
+    "hero": {
+      "image": "/assets/photos/neglected_timber_sports_floor_court.jpg",
+      "alt": "Technician with a clipboard beside a school hall court",
+      "title": "Preventative Maintenance",
+      "lead": "One scheduled visit a year, booked in advance, that keeps the coating ahead of the wear — so nothing ever becomes urgent.",
+      "crumb": "Preventative Maintenance"
+    },
+    "involves": {
+      "eyebrow": "What it involves",
+      "title": "The cheapest work is the work you plan",
+      "paragraphs": [
+        "Most of the floors we're called to rescue didn't fail suddenly — they just went a few too many years without anyone looking. A maintenance program takes that off your plate: we set the schedule, we turn up, and you get a short report telling you what the floor needs next and when.",
+        "Because we're planning years ahead instead of reacting, the work lands in your quiet weeks — term breaks, off-season, shutdown periods — and the cost sits in your budget as one predictable line item instead of an unwelcome capital request.",
+        "<strong>Turnaround:</strong> the annual inspection and clean is usually a single day or evening, with no court closure beyond that shift."
+      ],
+      "card": {
+        "title": "What's covered",
+        "items": [
+          "Annual condition inspection with photo record",
+          "Coating thickness and slip-resistance check",
+          "One scheduled deep clean per year",
+          "Board-ready written report and forward plan",
+          "Recoat timing forecast so you can budget early",
+          "Cleaning-method advice for your in-house team",
+          "Priority booking ahead of non-contract work"
+        ],
+        "note": "Included in every plan — Bronze, Silver and Gold. <a href=\"/#plans\">Compare plans</a>"
+      }
+    },
+    "steps": {
+      "eyebrow": "How it runs",
+      "title": "Set it once, and it looks after itself",
+      "items": [
+        {
+          "n": "01",
+          "title": "Baseline",
+          "text": "A first full inspection tells us what condition the floor is in and what it will need over the next five years.",
+          "accent": false
+        },
+        {
+          "n": "02",
+          "title": "Schedule",
+          "text": "We lock visit dates around your calendar — term breaks, off-season, shutdown weeks — for the whole term of the plan.",
+          "accent": false
+        },
+        {
+          "n": "03",
+          "title": "Service",
+          "text": "Each visit: inspect, deep clean, touch up what's needed and flag anything that's changed since last time.",
+          "accent": false
+        },
+        {
+          "n": "04",
+          "title": "Report",
+          "text": "A short written summary you can hand straight to your board or committee, with the next date already set.",
+          "accent": true
+        }
+      ]
+    },
+    "audience": {
+      "title": "Who we look after",
+      "chips": [
+        "Schools",
+        "Stadiums",
+        "Gyms",
+        "Recreation Centres",
+        "Community Halls"
+      ]
+    },
+    "beforeAfter": {
+      "eyebrow": "Floors on a program",
+      "title": "Five years apart, and still ahead",
+      "button": "Full gallery",
+      "pairs": [
+        {
+          "before": {
+            "src": "/assets/photos/indoor_sports_facility_timber_floor-2.jpg",
+            "alt": "A neglected court with visible wear lanes"
+          },
+          "after": {
+            "src": "/assets/photos/college_gymnasium_indoor_sports_.jpg",
+            "alt": "A court held on an annual maintenance program"
+          },
+          "caption": "Two community halls of the same age, five years apart — one recoated on schedule, one left until it needed sanding.",
+          "labels": [
+            "Left alone",
+            "On a program"
+          ]
+        }
+      ]
+    },
+    "crossSell": {
+      "eyebrow": "Also from us"
+    },
+    "cta": {
+      "title": "Ready to protect your floor?",
+      "text": "Free inspection, written report, costed recommendation. No obligation and no sales pitch."
+    }
+  },
+  "recoating": {
+    "slug": "recoating",
+    "metaTitle": "Sports Floor Recoating — Elite Sports Floor Care",
+    "metaDescription": "Screen and re-coat your timber sports floor in sports-grade finish — ready to play the next morning. Serving schools, stadiums, gyms and rec centres across Victoria.",
+    "hero": {
+      "image": "/assets/photos/technician_coating_indoor_sports.jpg",
+      "alt": "Coating machine laying finish across a timber court",
+      "title": "Sports Floor Recoating",
+      "lead": "A screen and re-coat renews the wear layer without touching the timber underneath — and you're playing on it the next morning.",
+      "crumb": "Recoating"
+    },
+    "involves": {
+      "eyebrow": "What it involves",
+      "title": "A new wear layer, not a new floor",
+      "paragraphs": [
+        "Every timber sports floor wears from the top down. The coating takes the punishment — shoes, ball impact, drag marks, cleaning chemicals — and once it thins out, the timber starts taking it instead. That's when a floor ends up needing a full sand, and a floor can only be sanded a handful of times in its life.",
+        "Recoating gets in before that happens. We abrade the existing finish back to a key, clean it down to bare dust-free timber-safe surface, then lay fresh sports-grade coats. The floor comes back with even gloss, correct slip resistance and the ball response players expect.",
+        "<strong>Turnaround:</strong> a single court is typically a two-night job, and most floors are ready for use the next morning. We work nights, weekends and school holidays so nothing comes off your booking sheet."
+      ],
+      "card": {
+        "title": "What's covered",
+        "items": [
+          "Pre-coat moisture and adhesion test",
+          "Full floor abrasion (screen) of existing finish",
+          "Dust extraction and tack-off",
+          "Two coats of sports-grade finish to AS 3610 slip range",
+          "Line-marking touch-ups where needed",
+          "Furniture, ring and fitting protection",
+          "Post-job photo record and care sheet for your cleaners"
+        ],
+        "note": "Included once in a Silver plan and twice in a Gold plan. <a href=\"/#plans\">Compare plans</a>"
+      }
+    },
+    "depth": {
+      "figLabel": "Fig. 02 · Wear-layer depth budget",
+      "iframeTitle": "Interactive comparison of a court floor's recoat versus full-sand depth budget",
+      "staticImage": "/assets/photos/floor_screening_machine_operatin.jpg",
+      "staticAlt": "Floor screening machine abrading a timber court surface",
+      "eyebrow": "The maths",
+      "title": "Why a recoat beats a re-sand",
+      "body": "Every court has a fixed depth budget. A recoat only renews the finish on top — do it as often as the schedule calls for and the board never gets any thinner. A full sand cuts into the timber itself, and there's only so much of it before you're into the tongue and groove. Try the model: recoat as many times as you like, then see how fast a floor runs out of safe sands.",
+      "legend": [
+        "Current surface — what players are on today",
+        "Remaining wear layer — still safe to sand",
+        "Structural minimum — the line we never cross"
+      ]
+    },
+    "steps": {
+      "eyebrow": "How it runs",
+      "title": "Four steps, two nights",
+      "items": [
+        {
+          "n": "01",
+          "title": "Inspect",
+          "text": "We test the existing coating, check moisture and confirm the floor is a recoat candidate — not a re-sand.",
+          "accent": false
+        },
+        {
+          "n": "02",
+          "title": "Prep",
+          "text": "Court is cleared and protected, the floor is screened back to a key and every trace of dust extracted.",
+          "accent": false
+        },
+        {
+          "n": "03",
+          "title": "Coat",
+          "text": "Two sports-grade coats laid overnight, with line-marking touch-ups between coats if they're due.",
+          "accent": false
+        },
+        {
+          "n": "04",
+          "title": "Ready next day",
+          "text": "We hand the court back with a photo record, a care sheet and a date pencilled in for the next cycle.",
+          "accent": true
+        }
+      ]
+    },
+    "audience": {
+      "title": "Who we recoat for",
+      "chips": [
+        "Schools",
+        "Stadiums",
+        "Gyms",
+        "Recreation Centres",
+        "Community Halls"
+      ]
+    },
+    "beforeAfter": {
+      "eyebrow": "Recoats we've done",
+      "title": "Before & after",
+      "button": "Full gallery",
+      "pairs": [
+        {
+          "before": {
+            "src": "/assets/photos/indoor_sports_facility_timber_floor-2.jpg",
+            "alt": "Before: dull, patchy school court coating"
+          },
+          "after": {
+            "src": "/assets/photos/basketball_court_inside_sports_f.jpg",
+            "alt": "After: even gloss across the same court"
+          },
+          "caption": "Kilbryde Grammar, Ringwood — single court recoat over a long weekend.",
+          "labels": [
+            "Before",
+            "After"
+          ]
+        },
+        {
+          "before": {
+            "src": "/assets/photos/worn_timber_sports_floor_surface.jpg",
+            "alt": "Before: worn stadium centre-circle traffic lane"
+          },
+          "after": {
+            "src": "/assets/photos/worn_stadium_court_centre_circle.jpg",
+            "alt": "After: recoated stadium court under lights"
+          },
+          "caption": "Northvale Indoor Sports, Craigieburn — four courts recoated across two nights.",
+          "labels": [
+            "Before",
+            "After"
+          ]
+        }
+      ]
+    },
+    "crossSell": {
+      "eyebrow": "Also from us"
+    },
+    "cta": {
+      "title": "Ready to protect your floor?",
+      "text": "Free inspection, written report, costed recommendation. No obligation and no sales pitch."
+    }
+  },
+  "deep-cleaning": {
+    "slug": "deep-cleaning",
+    "metaTitle": "Deep Cleaning — Elite Sports Floor Care",
+    "metaDescription": "Sports-floor-safe machine deep cleaning that lifts embedded grime and rubber marking mopping leaves behind, with same-morning turnaround.",
+    "hero": {
+      "image": "/assets/photos/scrubbing_machine_cleaning_gym_f.jpg",
+      "alt": "Rotary floor machine mid-clean on a timber court",
+      "title": "Deep Cleaning",
+      "lead": "Mopping moves the dirt around. A proper deep clean lifts the embedded grime and rubber that's dulling your floor and eating the coating.",
+      "crumb": "Deep Cleaning"
+    },
+    "involves": {
+      "eyebrow": "What it involves",
+      "title": "Grip you can feel, gloss you can see",
+      "paragraphs": [
+        "Court shoes leave rubber behind. Add dust, sweat, spilled drinks and whatever the last cleaning product left on the surface, and you get a floor that looks tired, plays slippery in patches and grips oddly in others. Players notice it before anyone else does.",
+        "We use sports-floor-safe equipment and pH-correct chemistry — no water flooding, no aggressive strippers, nothing that will haze the coating or swell the boards. The residue comes off, the surface texture comes back, and the coating stops being sanded down by the grit sitting on top of it.",
+        "<strong>Turnaround:</strong> a single court is an overnight job and is ready for use the same morning. No dry-out period."
+      ],
+      "card": {
+        "title": "What's covered",
+        "items": [
+          "Dry dust and debris removal, wall to wall",
+          "Machine scrub with pH-correct, sports-safe chemistry",
+          "Rubber scuff and heel-mark removal by hand",
+          "Immediate wet-vacuum recovery — no standing water",
+          "Edges, under-seating and dead corners included",
+          "Slip-resistance spot check on handover",
+          "Written care sheet for your cleaning contractor"
+        ],
+        "note": "One clean per year is included in every plan. <a href=\"/#plans\">Compare plans</a>"
+      }
+    },
+    "steps": {
+      "eyebrow": "How it runs",
+      "title": "In overnight, out by morning",
+      "items": [
+        {
+          "n": "01",
+          "title": "Assess",
+          "text": "We test a small area first to confirm the right pad and chemistry for your coating type.",
+          "accent": false
+        },
+        {
+          "n": "02",
+          "title": "Clear & dry-clean",
+          "text": "Court is cleared, then all loose grit comes off dry — the grit is what does the damage.",
+          "accent": false
+        },
+        {
+          "n": "03",
+          "title": "Scrub & recover",
+          "text": "Machine scrub in sections, with the solution vacuumed straight back up so water never sits on timber.",
+          "accent": false
+        },
+        {
+          "n": "04",
+          "title": "Hand back",
+          "text": "Court reset, marks checked, and a note on anything the coating is telling us for next time.",
+          "accent": true
+        }
+      ]
+    },
+    "audience": {
+      "title": "Who we clean for",
+      "chips": [
+        "Schools",
+        "Stadiums",
+        "Gyms",
+        "Recreation Centres",
+        "Community Halls"
+      ]
+    },
+    "beforeAfter": {
+      "eyebrow": "One night's work",
+      "title": "Before & after",
+      "button": "Full gallery",
+      "pairs": [
+        {
+          "before": {
+            "src": "/assets/photos/leisure_centre_timber_floor_view.jpg",
+            "alt": "Before: grey, rubber-marked gym floor"
+          },
+          "after": {
+            "src": "/assets/photos/leisure_centre_gym_floor_cleaning.jpg",
+            "alt": "After: same floor cleaned back to clear gloss"
+          },
+          "caption": "Ferngully Leisure Centre, Knoxfield — two courts deep cleaned overnight, open at 6am.",
+          "labels": [
+            "Before",
+            "After"
+          ]
+        }
+      ]
+    },
+    "crossSell": {
+      "eyebrow": "Also from us"
+    },
+    "cta": {
+      "title": "Ready to protect your floor?",
+      "text": "Free inspection, written report, costed recommendation. No obligation and no sales pitch."
+    }
+  },
+  "court-line-marking": {
+    "slug": "court-line-marking",
+    "metaTitle": "Court Line Marking — Elite Sports Floor Care",
+    "metaDescription": "Court lines set out to current basketball, netball, badminton, volleyball and futsal dimensions, hand-masked and sealed under the floor coating.",
+    "hero": {
+      "image": "/assets/photos/setting_court_lines_on_timber.jpg",
+      "alt": "Fresh court lines being masked and set out on timber",
+      "title": "Court Line Marking",
+      "lead": "Set out to the current governing-body dimensions, masked by hand and sealed under coating so the lines last as long as the finish.",
+      "crumb": "Court Line Marking"
+    },
+    "involves": {
+      "eyebrow": "What it involves",
+      "title": "Lines that hold up to a referee's eye",
+      "paragraphs": [
+        "Faded, doubled-up or out-of-code lines are the fastest way to lose a fixture. We re-set courts to the current dimensions for basketball, netball, badminton, volleyball and futsal — and where a hall carries four or five sports at once, we work out a colour and priority scheme that stays readable instead of turning into spaghetti.",
+        "Every line is set out from datum, masked by hand and rolled in sports-grade paint, then sealed under the floor coating. That's the part that matters: sealed lines wear at the same rate as the finish instead of lifting at the edges within a season.",
+        "<strong>Turnaround:</strong> usually done as part of a recoat — a full re-set on a single court is two to three nights including seal coats."
+      ],
+      "card": {
+        "title": "What's covered",
+        "items": [
+          "Set-out to current basketball, netball and badminton codes",
+          "Volleyball and futsal overlays where required",
+          "Multi-sport colour scheme planned for legibility",
+          "Removal of redundant or superseded lines",
+          "Hand-masked edges — no bleed, no wobble",
+          "Centre logos and key infills on request",
+          "Sealed under two coats of sports finish"
+        ],
+        "note": "Touch-ups in Silver; one full re-set included in Gold. <a href=\"/#plans\">Compare plans</a>"
+      }
+    },
+    "steps": {
+      "eyebrow": "How it runs",
+      "title": "Measured twice, painted once",
+      "items": [
+        {
+          "n": "01",
+          "title": "Plan the court",
+          "text": "We confirm which sports the hall has to carry, then draw the scheme and get your sign-off before anything is painted.",
+          "accent": false
+        },
+        {
+          "n": "02",
+          "title": "Set out",
+          "text": "Datum lines struck, dimensions checked against the code, every arc and key marked and re-measured.",
+          "accent": false
+        },
+        {
+          "n": "03",
+          "title": "Mask & paint",
+          "text": "Hand-masked and rolled in sports-grade paint, colour by colour, with drying time between each.",
+          "accent": false
+        },
+        {
+          "n": "04",
+          "title": "Seal",
+          "text": "Two coats of finish over the top, so the lines wear at the same rate as the rest of the floor.",
+          "accent": true
+        }
+      ]
+    },
+    "audience": {
+      "title": "Who we mark for",
+      "chips": [
+        "Schools",
+        "Stadiums",
+        "Gyms",
+        "Recreation Centres",
+        "Community Halls"
+      ]
+    },
+    "beforeAfter": {
+      "eyebrow": "Re-sets we've done",
+      "title": "Before & after",
+      "button": "Full gallery",
+      "pairs": [
+        {
+          "before": {
+            "src": "/assets/photos/crew_member_taping_court_line-2.jpg",
+            "alt": "Before: faded, overlapping court lines"
+          },
+          "after": {
+            "src": "/assets/photos/indoor_sports_facility_timber_floor.jpg",
+            "alt": "After: crisp re-set lines sealed under finish"
+          },
+          "caption": "Barrandale Memorial Hall, Colac — three sports re-set to a single readable scheme.",
+          "labels": [
+            "Before",
+            "After"
+          ]
+        }
+      ]
+    },
+    "crossSell": {
+      "eyebrow": "Also from us"
+    },
+    "cta": {
+      "title": "Ready to protect your floor?",
+      "text": "Free inspection, written report, costed recommendation. No obligation and no sales pitch."
+    }
+  },
+  "floor-inspections": {
+    "slug": "floor-inspections",
+    "metaTitle": "Floor Inspections — Elite Sports Floor Care",
+    "metaDescription": "A free, no-obligation condition report for your timber sports floor — what it needs, what it doesn't, what it will cost and when, in writing with photos.",
+    "hero": {
+      "image": "/assets/photos/worn_timber_sports_floor_surface.jpg",
+      "alt": "Close-up of a hand testing coating wear on a court",
+      "title": "Floor Inspections",
+      "lead": "A free, no-obligation condition report: what your floor needs, what it doesn't, what it will cost and when. In writing, with photos.",
+      "crumb": "Floor Inspections"
+    },
+    "involves": {
+      "eyebrow": "What it involves",
+      "title": "Know what you're sitting on",
+      "paragraphs": [
+        "Most facility managers inherit their floor. Nobody hands over the coating history, so the first honest answer to \"how long has it got?\" usually comes from someone standing on it with a torch and a test kit. That's what this visit is.",
+        "We'll tell you plainly whether the floor is a recoat, a re-sand or fine as it is — including when the answer is \"leave it another two years.\" You get a written report you can attach to a budget submission, and a costed recommendation with no obligation to book anything.",
+        "<strong>Turnaround:</strong> the visit takes about an hour per court and doesn't interrupt play. Report lands within three business days."
+      ],
+      "card": {
+        "title": "What's in the report",
+        "items": [
+          "Coating condition and remaining wear layer",
+          "Slip-resistance and surface-texture assessment",
+          "Moisture reading and board movement check",
+          "Line-marking compliance against current codes",
+          "Photo record of problem areas",
+          "Recoat-or-re-sand recommendation, with reasoning",
+          "Indicative costs and a five-year forward plan"
+        ],
+        "note": "Free for Victorian facilities, whether or not you go on to book work."
+      }
+    },
+    "steps": {
+      "eyebrow": "How it runs",
+      "title": "An hour on site, three days to a plan",
+      "items": [
+        {
+          "n": "01",
+          "title": "Book a time",
+          "text": "Send through your details and we'll find a slot that fits around bookings — including early mornings.",
+          "accent": false
+        },
+        {
+          "n": "02",
+          "title": "On-site testing",
+          "text": "Coating, moisture, slip resistance and line marking, court by court, with photos as we go.",
+          "accent": false
+        },
+        {
+          "n": "03",
+          "title": "Written report",
+          "text": "Plain-English findings, a recommendation and indicative costs — formatted so you can forward it as-is.",
+          "accent": false
+        },
+        {
+          "n": "04",
+          "title": "Your call",
+          "text": "Book the work, put it in next year's budget, or file the report. No follow-up pressure either way.",
+          "accent": true
+        }
+      ]
+    },
+    "audience": {
+      "title": "Who we inspect for",
+      "chips": [
+        "Schools",
+        "Stadiums",
+        "Gyms",
+        "Recreation Centres",
+        "Community Halls"
+      ]
+    },
+    "beforeAfter": {
+      "eyebrow": "What we find",
+      "title": "Caught early, caught late",
+      "button": "Full gallery",
+      "pairs": [
+        {
+          "before": {
+            "src": "/assets/photos/worn_timber_sports_floor_surface.jpg",
+            "alt": "Coating worn through to bare timber in a traffic lane"
+          },
+          "after": {
+            "src": "/assets/photos/neglected_timber_sports_floor_court.jpg",
+            "alt": "Coating thinning but timber still protected"
+          },
+          "caption": "Two courts inspected the same week. The difference in cost between them was about eight times.",
+          "labels": [
+            "Too late — needs sanding",
+            "In time — recoat"
+          ]
+        }
+      ]
+    },
+    "crossSell": {
+      "eyebrow": "Also from us"
+    },
+    "cta": {
+      "title": "Ready to protect your floor?",
+      "text": "Free inspection, written report, costed recommendation. No obligation and no sales pitch."
+    }
+  }
+}
