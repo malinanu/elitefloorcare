@@ -1,6 +1,8 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
+import type { Enquiry } from "@/lib/db/schema";
 import { headers } from "next/headers";
 import { db, schema } from "@/lib/db";
 import { enquirySchema, type EnquiryInput, type EnquiryState } from "@/lib/enquiry-schema";
@@ -44,10 +46,20 @@ export async function submitEnquiry(_prev: EnquiryState, formData: FormData): Pr
     }
 
     // 4. persist FIRST — a lead is never lost even if email/SMS fail
-    const [row] = await db()
-      .insert(schema.enquiries)
-      .values({ ...parsed.data, message: parsed.data.message || null, ipHash, userAgent: h.get("user-agent")?.slice(0, 300) ?? null })
-      .returning();
+    //    (MySQL has no RETURNING, so the id and timestamp are set here and the row is rebuilt for the notifications)
+    const row: Enquiry = {
+      ...parsed.data,
+      id: randomUUID(),
+      createdAt: new Date(),
+      message: parsed.data.message || null,
+      ipHash,
+      userAgent: h.get("user-agent")?.slice(0, 300) ?? null,
+      emailStatus: "pending",
+      emailError: null,
+      smsStatus: "pending",
+      smsError: null,
+    };
+    await db().insert(schema.enquiries).values(row);
 
     // 5. notify in parallel; record each outcome on the row
     const [mail, sms] = await Promise.allSettled([sendEnquiryEmail(row), sendEnquirySms(row)]);

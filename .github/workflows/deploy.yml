@@ -1,0 +1,128 @@
+name: Build & deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || 'deploy-production' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    # The server is an Oracle Ampere (ARM64) box. Next's standalone bundle includes sharp's
+    # native binary for the build machine, so build on ARM64 to match.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'https://elitesportsfloorcare.com.au' }}
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4 # version comes from package.json "packageManager"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('app/**', 'components/**', 'lib/**', 'content/**', 'styles/**') }}
+          restore-keys: next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}-
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build (type-check + lint + compile)
+        run: pnpm build
+
+      - name: Package release
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp -a .next/standalone/. release/
+          cp -a .next/static release/.next/static
+          cp -a public release/public
+          cp -a drizzle release/drizzle
+          cp ecosystem.config.cjs release/
+          # never ship local env files
+          find release -maxdepth 1 -name '.env*' -delete
+          # sharp must be the linux-arm64 (glibc) build, or images 500 on the server
+          ls release/node_modules/.pnpm | grep -q '^@img+sharp-linux-arm64@' || { echo "::error::linux-arm64 sharp missing from bundle"; exit 1; }
+          tar -czf release.tgz -C release .
+          du -h release.tgz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: |
+            release.tgz
+            scripts/deploy.sh
+          retention-days: 14
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+    env:
+      APP_DIR: ${{ vars.APP_DIR }}
+      APP_PORT: ${{ vars.APP_PORT || '3000' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+
+      - name: Configure SSH (pinned host key)
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          set -euo pipefail
+          for v in SSH_PRIVATE_KEY SSH_KNOWN_HOSTS SSH_HOST SSH_USER; do
+            [ -n "${!v}" ] || { echo "::error::secret $v is not set"; exit 1; }
+          done
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host server
+            HostName $SSH_HOST
+            Port $SSH_PORT
+            User $SSH_USER
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 15
+          EOF
+
+      - name: Upload release
+        run: |
+          set -euo pipefail
+          ssh server 'mkdir -p ~/deploy-inbox'
+          scp release.tgz server:~/deploy-inbox/release-${{ github.sha }}.tgz
+          scp scripts/deploy.sh server:~/deploy-inbox/deploy.sh
+
+      - name: Activate release
+        run: |
+          ssh server "chmod +x ~/deploy-inbox/deploy.sh && \
+            APP_DIR='${APP_DIR}' APP_PORT='${APP_PORT}' \
+            ~/deploy-inbox/deploy.sh ~/deploy-inbox/release-${{ github.sha }}.tgz ${{ github.sha }}"
+
+      - name: Clean up key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

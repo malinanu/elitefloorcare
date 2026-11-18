@@ -1,23 +1,26 @@
-import { index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { index, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
-export const enquiries = pgTable(
+export const enquiries = mysqlTable(
   "enquiries",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    name: text("name").notNull(),
-    business: text("business").notNull(),
-    phone: text("phone").notNull(),
-    email: text("email").notNull(),
-    location: text("location").notNull(),
-    facilityType: text("facility_type").notNull(),
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    createdAt: timestamp("created_at", { fsp: 3 }).notNull().default(sql`CURRENT_TIMESTAMP(3)`),
+    name: varchar("name", { length: 120 }).notNull(),
+    business: varchar("business", { length: 160 }).notNull(),
+    phone: varchar("phone", { length: 40 }).notNull(),
+    email: varchar("email", { length: 200 }).notNull(),
+    location: varchar("location", { length: 160 }).notNull(),
+    facilityType: varchar("facility_type", { length: 40 }).notNull(),
     message: text("message"),
-    ipHash: text("ip_hash").notNull(),
-    userAgent: text("user_agent"),
+    ipHash: varchar("ip_hash", { length: 64 }).notNull(),
+    userAgent: varchar("user_agent", { length: 300 }),
     /** pending | sent | failed | skipped */
-    emailStatus: text("email_status").notNull().default("pending"),
+    emailStatus: varchar("email_status", { length: 16 }).notNull().default("pending"),
     emailError: text("email_error"),
-    smsStatus: text("sms_status").notNull().default("pending"),
+    smsStatus: varchar("sms_status", { length: 16 }).notNull().default("pending"),
     smsError: text("sms_error"),
   },
   (t) => [index("enquiries_ip_created_idx").on(t.ipHash, t.createdAt), index("enquiries_created_idx").on(t.createdAt)],

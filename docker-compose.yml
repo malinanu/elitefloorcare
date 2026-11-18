@@ -1,4 +1,4 @@
-# Production stack: web + Postgres. Works as a Portainer "stack" (paste this file, add env vars in the UI)
+# Optional Docker route (CloudPanel Node.js site + GitHub Actions is the main one — see README): web + MySQL. Works as a Portainer "stack" (paste this file, add env vars in the UI)
 # or from the CLI:  docker compose --env-file .env up -d --build
 # Put CloudPanel / your reverse proxy in front of 127.0.0.1:3000 with TLS.
 
@@ -13,7 +13,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: postgres://efc:${POSTGRES_PASSWORD}@db:5432/efc
+      DATABASE_URL: mysql://efc:${MYSQL_PASSWORD}@db:3306/efc
     ports:
       - "127.0.0.1:3000:3000" # only the reverse proxy should reach it
     depends_on:
@@ -21,16 +21,17 @@ services:
         condition: service_healthy
 
   db:
-    image: postgres:16-alpine
+    image: mysql:8.4
     restart: unless-stopped
     environment:
-      POSTGRES_USER: efc
-      POSTGRES_DB: efc
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      MYSQL_DATABASE: efc
+      MYSQL_USER: efc
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
     volumes:
-      - efc-pg:/var/lib/postgresql/data
+      - efc-db:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U efc -d efc"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uefc -p$$MYSQL_PASSWORD --silent"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -45,4 +46,4 @@ services:
       - "127.0.0.1:1025:1025"
 
 volumes:
-  efc-pg:
+  efc-db:
