@@ -61,16 +61,30 @@ jobs:
             [ -n "${!v}" ] || { echo "::error::'${v/SITE_URL/NEXT_PUBLIC_SITE_URL}' is not set in the staging environment"; ok=0; }
           done
           [ "$ok" = 1 ] || exit 1
+          # Normalise the site URL: trim spaces/quotes, add https:// if missing, keep only the origin.
+          if ! url=$(node -e '
+              let v = process.argv[1].trim().replace(/^["\x27]+|["\x27]+$/g, "").trim();
+              if (!/^https?:\/\//i.test(v)) v = "https://" + v.replace(/^\/+/, "");
+              const u = new URL(v);
+              if (!u.hostname.includes(".")) throw new Error("no domain");
+              process.stdout.write(u.origin);
+            ' "$SITE_URL" 2>/dev/null); then
+            starts=$(printf '%s' "$SITE_URL" | head -c 8 | sed -E 's/[^a-z:/]/?/g')
+            echo "::error::NEXT_PUBLIC_SITE_URL in the staging environment is not a valid site address (it has ${#SITE_URL} characters and starts with '${starts}'). Set it to the full address, e.g. https://elitefloorcare.3logiq.com"
+            exit 1
+          fi
+          echo "SITE_URL=$url" >> "$GITHUB_ENV"
+          echo "Site: $url"
           # CloudPanel puts every site at /home/<site-user>/htdocs/<domain>; derive it unless APP_DIR is set.
-          domain=$(printf '%s' "$SITE_URL" | sed -E 's#^https?://##; s#[/:].*$##')
+          domain=$(node -e 'process.stdout.write(new URL(process.argv[1]).hostname)' "$url")
           app_dir=${APP_DIR_SET:-/home/$SSH_USER/htdocs/$domain}
           echo "APP_DIR=$app_dir" >> "$GITHUB_ENV"
           echo "Deploying to $SSH_USER@<host>:$app_dir (port $APP_PORT)"
-          [ -n "$ADMIN_EMAIL" ] || echo "::warning::ADMIN_EMAIL is not set — needed for the first deploy (it creates the first CMS admin)."
+          [ -n "$ADMIN_EMAIL" ] || echo "::notice::ADMIN_EMAIL is not set — the first deploy creates admin@$domain with a generated password (saved on the server in shared/INITIAL_ADMIN_PASSWORD.txt)."
 
       - uses: ./.github/actions/build-release
         with:
-          site-url: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
+          site-url: ${{ env.SITE_URL }}
           turnstile-site-key: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY || secrets.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
 
       - name: Configure SSH

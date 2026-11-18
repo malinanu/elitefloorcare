@@ -76,7 +76,11 @@ has_env SMS_PROVIDER || set_env SMS_PROVIDER none
 # First admin: without one, anyone could claim /admin on a fresh install. If GitHub didn't send
 # ADMIN_PASSWORD, make one and leave it in a file only the site user can read.
 if [ ! -s "$APP_DIR/shared/data/payload.db" ]; then
-  has_env ADMIN_EMAIL || die "ADMIN_EMAIL is not set: add it as a secret in the GitHub 'staging' environment"
+  if ! has_env ADMIN_EMAIL; then
+    host=$(grep '^NEXT_PUBLIC_SITE_URL=' "$ENV_FILE" | cut -d= -f2- | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(new URL(d.trim()).hostname)}catch{process.stdout.write("localhost")}})')
+    set_env ADMIN_EMAIL "admin@$host"
+    log "no ADMIN_EMAIL given — first admin will be admin@$host"
+  fi
   if ! has_env ADMIN_PASSWORD; then
     pw=$(rand | cut -c1-24)
     set_env ADMIN_PASSWORD "$pw"
