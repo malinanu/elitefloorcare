@@ -43,47 +43,57 @@ jobs:
       group: deploy-staging
       cancel-in-progress: false # never kill a deploy half way; queue the next one
     env:
-      APP_DIR: ${{ vars.APP_DIR || secrets.APP_DIR }}
+      SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
+      APP_DIR_SET: ${{ vars.APP_DIR || secrets.APP_DIR }}
       APP_PORT: ${{ vars.APP_PORT || secrets.APP_PORT || '3000' }}
+      SSH_USER: ${{ secrets.SSH_USER }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Check settings
         env:
-          SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL || vars.ADMIN_EMAIL }}
         run: |
           ok=1
-          [ -n "$APP_DIR" ] || { echo "::error::APP_DIR is not set in the staging environment (e.g. /home/<site-user>/htdocs/<domain>)"; ok=0; }
           for v in SITE_URL SSH_PRIVATE_KEY SSH_HOST SSH_USER; do
             [ -n "${!v}" ] || { echo "::error::'${v/SITE_URL/NEXT_PUBLIC_SITE_URL}' is not set in the staging environment"; ok=0; }
           done
-          if [ -z "$SSH_KNOWN_HOSTS" ]; then
-            echo "::error::SSH_KNOWN_HOSTS is not set. On your own machine run:  ssh-keyscan -p <SSH_PORT> <SSH_HOST>  and save the whole output as the SSH_KNOWN_HOSTS secret in the staging environment."
-            ok=0
-          fi
-          [ "$ok" = 1 ]
+          [ "$ok" = 1 ] || exit 1
+          # CloudPanel puts every site at /home/<site-user>/htdocs/<domain>; derive it unless APP_DIR is set.
+          domain=$(printf '%s' "$SITE_URL" | sed -E 's#^https?://##; s#[/:].*$##')
+          app_dir=${APP_DIR_SET:-/home/$SSH_USER/htdocs/$domain}
+          echo "APP_DIR=$app_dir" >> "$GITHUB_ENV"
+          echo "Deploying to $SSH_USER@<host>:$app_dir (port $APP_PORT)"
+          [ -n "$ADMIN_EMAIL" ] || echo "::warning::ADMIN_EMAIL is not set — needed for the first deploy (it creates the first CMS admin)."
 
       - uses: ./.github/actions/build-release
         with:
           site-url: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
           turnstile-site-key: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY || secrets.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
 
-      - name: Configure SSH (pinned host key)
+      - name: Configure SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
-          SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$SSH_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+          if [ -n "$SSH_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$SSH_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+          else
+            # No pinned key yet: trust the key the server presents now, and print it so it can be pinned.
+            ssh-keyscan -T 15 -p "$SSH_PORT" "$SSH_HOST" > ~/.ssh/known_hosts 2>/dev/null
+            [ -s ~/.ssh/known_hosts ] || { echo "::error::could not reach $SSH_HOST:$SSH_PORT over SSH"; exit 1; }
+            echo "::warning::SSH_KNOWN_HOSTS is not set, so the server's host key was trusted on first use. Pin it: save the lines below as the SSH_KNOWN_HOSTS secret in the staging environment."
+            sed -E 's/^[^ ]+ /<host> /' ~/.ssh/known_hosts
+            ssh-keygen -lf ~/.ssh/known_hosts | sed -E 's/ [^ ]+ / <host> /'
+          fi
+          chmod 644 ~/.ssh/known_hosts
           cat > ~/.ssh/config <<EOF
           Host server
             HostName $SSH_HOST
@@ -96,18 +106,61 @@ jobs:
             ConnectTimeout 20
           EOF
 
+      - name: Prepare app settings
+        # Only settings present in the environment are sent; the server keeps anything already set.
+        env:
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL || vars.ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST || vars.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || vars.SMTP_PORT }}
+          SMTP_SECURE: ${{ secrets.SMTP_SECURE || vars.SMTP_SECURE }}
+          SMTP_USER: ${{ secrets.SMTP_USER || vars.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM || vars.MAIL_FROM }}
+          ENQUIRY_EMAIL_TO: ${{ secrets.ENQUIRY_EMAIL_TO || vars.ENQUIRY_EMAIL_TO }}
+          CLICKSEND_USERNAME: ${{ secrets.CLICKSEND_USERNAME }}
+          CLICKSEND_API_KEY: ${{ secrets.CLICKSEND_API_KEY }}
+          SMS_TO: ${{ secrets.SMS_TO || vars.SMS_TO }}
+          SMS_FROM: ${{ secrets.SMS_FROM || vars.SMS_FROM }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+          RATE_LIMIT_PER_HOUR: ${{ vars.RATE_LIMIT_PER_HOUR }}
+        run: |
+          set -euo pipefail
+          umask 077
+          : > app.env
+          printf 'NEXT_PUBLIC_SITE_URL=%s\n' "$SITE_URL" >> app.env
+          for k in ADMIN_EMAIL ADMIN_PASSWORD SMTP_HOST SMTP_PORT SMTP_SECURE SMTP_USER SMTP_PASS MAIL_FROM ENQUIRY_EMAIL_TO \
+                   CLICKSEND_USERNAME CLICKSEND_API_KEY SMS_TO SMS_FROM TURNSTILE_SECRET_KEY RATE_LIMIT_PER_HOUR; do
+            v=${!k}; [ -n "$v" ] || continue
+            case "$v" in *$'\n'*) echo "::error::$k contains a newline"; exit 1;; esac
+            printf '%s=%s\n' "$k" "$v" >> app.env
+          done
+          if [ -n "$CLICKSEND_USERNAME" ] && [ -n "$CLICKSEND_API_KEY" ] && [ -n "$SMS_TO" ]; then echo 'SMS_PROVIDER=clicksend' >> app.env; fi
+          echo "sending $(wc -l < app.env) settings: $(cut -d= -f1 app.env | tr '\n' ' ')"
+
       - name: Upload release
         run: |
           set -euo pipefail
-          ssh server 'mkdir -p ~/deploy-inbox'
+          ssh server 'mkdir -p ~/deploy-inbox && chmod 700 ~/deploy-inbox'
           scp release.tgz server:~/deploy-inbox/release-${{ github.sha }}.tgz
           scp scripts/deploy.sh server:~/deploy-inbox/deploy.sh
+          scp app.env server:~/deploy-inbox/app.env
+          rm -f app.env
 
       - name: Activate release
         run: |
           ssh server "chmod +x ~/deploy-inbox/deploy.sh && \
-            APP_DIR='${APP_DIR}' APP_PORT='${APP_PORT}' \
+            APP_DIR='${APP_DIR}' APP_PORT='${APP_PORT}' APP_ENV_FILE=\$HOME/deploy-inbox/app.env \
             ~/deploy-inbox/deploy.sh ~/deploy-inbox/release-${{ github.sha }}.tgz ${{ github.sha }}"
+
+      - name: Smoke test (public URL)
+        run: |
+          for path in / /sitemap.xml /admin/login; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$SITE_URL$path" || true)
+            echo "$path → $code"
+          done
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$SITE_URL/sitemap.xml" || true)
+          [ "$code" = 200 ] || echo "::warning::the app is healthy on the server but $SITE_URL/sitemap.xml returned $code — check the site's App Port in CloudPanel matches APP_PORT ($APP_PORT)."
 
       - name: Clean up key
         if: always()

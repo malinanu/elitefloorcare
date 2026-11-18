@@ -57,7 +57,7 @@ export async function submitEnquiry(_prev: EnquiryState, formData: FormData): Pr
       collection: "enquiries",
       id: row.id,
       data: {
-        emailStatus: mail.status === "fulfilled" ? "sent" : "failed",
+        emailStatus: mail.status === "fulfilled" ? mail.value : "failed",
         emailError: mail.status === "rejected" ? errText(mail.reason) : null,
         smsStatus: sms.status === "fulfilled" ? sms.value : "failed",
         smsError: sms.status === "rejected" ? errText(sms.reason) : null,

@@ -75,36 +75,38 @@ Pull requests only build, with no secrets and no server access.
 └── logs/                               PM2 logs
 ```
 
-### One-time server setup
+### First deploy: everything runs from GitHub Actions
 
-1. **In CloudPanel, create the site:** Add Site → Create a Node.js Site. Choose **Node.js 24 LTS** and App Port `3000`. Then issue a Let's Encrypt certificate under **SSL/TLS**.
-2. **SSH in as the site user:**
-   ```bash
-   npm i -g pm2
-   mkdir -p ~/htdocs/<domain>/shared ~/.ssh
-   cp /dev/null ~/htdocs/<domain>/shared/.env && chmod 600 ~/htdocs/<domain>/shared/.env
-   nano ~/htdocs/<domain>/shared/.env           # fill from .env.example (PAYLOAD_SECRET, ADMIN_*, SMTP, ClickSend, IP_HASH_SALT)
-   echo '<deploy public key>' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
-   ```
-3. **Add the cron jobs** under CloudPanel → Sites → *site* → Cron Jobs:
-   - `@reboot pm2 resurrect` brings the site back after a server reboot.
-   - Run this nightly at 02:30, as `30 2 * * *`:
-     ```bash
-     APP_DIR=/home/<site-user>/htdocs/<domain> bash /home/<site-user>/htdocs/<domain>/current/scripts/backup.sh
-     ```
-4. **Add these to GitHub → Settings → Environments → `staging`:**
+On a fresh CloudPanel **Node.js site** (Node 24 LTS, App Port 3000, SSL issued), the first `deploy` run does all of this:
+- installs PM2 for the site user
+- creates `shared/.env` with mode 600
+- generates `PAYLOAD_SECRET` and `IP_HASH_SALT`, once
+- applies the settings below from GitHub
+- refuses to start if another process holds the App Port
+- starts the app
 
-   | Kind | Name | Value |
-   | --- | --- | --- |
-   | Secret | `SSH_HOST`, `SSH_PORT`, `SSH_USER` | server, port, the **site user** (not root) |
-   | Secret | `SSH_PRIVATE_KEY` | the deploy key (private half) |
-   | Secret | `SSH_KNOWN_HOSTS` | output of `ssh-keyscan -p <SSH_PORT> <SSH_HOST>` |
-   | Variable or secret | `APP_DIR` | `/home/<site-user>/htdocs/<domain>` |
-   | Variable or secret | `NEXT_PUBLIC_SITE_URL` | `https://<domain>` |
-   | Variable or secret | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | optional |
-   | Variable | `APP_PORT` | optional, default `3000` |
+The app then migrates, creates the first admin and loads the launch content.
 
-5. **Merge to `main`.** The first boot applies the migration, creates the admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` and loads the launch content. Then log in at `https://<domain>/admin` and change the password.
+**GitHub → Settings → Environments → `staging`:**
+
+| Name | Kind | Needed | Value |
+| --- | --- | --- | --- |
+| `SSH_HOST`, `SSH_PORT`, `SSH_USER` | secret | yes | server, port, the **site user** (not root) |
+| `SSH_PRIVATE_KEY` | secret | yes | deploy key; put its public half in the site user's `~/.ssh/authorized_keys` |
+| `NEXT_PUBLIC_SITE_URL` | variable or secret | yes | `https://<domain>`. `APP_DIR` defaults to `/home/<SSH_USER>/htdocs/<domain>` |
+| `ADMIN_EMAIL` | secret | first deploy | first CMS admin |
+| `ADMIN_PASSWORD` | secret | optional | If unset, one is generated into `shared/INITIAL_ADMIN_PASSWORD.txt` on the server |
+| `SSH_KNOWN_HOSTS` | secret | recommended | `ssh-keyscan -p <port> <host>`. If unset, the key is trusted on first use and printed in the log, so you can pin it |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `ENQUIRY_EMAIL_TO` | secrets | optional | enquiry emails and admin password resets. Without them, leads are still saved in the CMS |
+| `CLICKSEND_USERNAME`, `CLICKSEND_API_KEY`, `SMS_TO`, `SMS_FROM` | secrets | optional | SMS alerts. Switched on automatically when the first three are set |
+| `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | secret / variable | optional | bot check on the form |
+| `APP_PORT`, `APP_DIR` | variables | optional | only if they differ from the defaults (`3000`, CloudPanel's path) |
+
+Settings sent from GitHub overwrite the same keys in `shared/.env` on every deploy. Anything not sent is left as it is. Add a CloudPanel cron job, `@reboot pm2 resurrect`, so the site returns after a server reboot. Also add the nightly backup:
+
+```
+30 2 * * *   APP_DIR=/home/<site-user>/htdocs/<domain> bash /home/<site-user>/htdocs/<domain>/current/scripts/backup.sh
+```
 
 ### Day to day
 

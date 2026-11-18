@@ -7,7 +7,7 @@ let transporter: Transporter | undefined;
 function mailer() {
   const e = env();
   transporter ??= nodemailer.createTransport({
-    host: e.SMTP_HOST,
+    host: e.SMTP_HOST!,
     port: e.SMTP_PORT,
     secure: e.SMTP_SECURE,
     auth: e.SMTP_USER ? { user: e.SMTP_USER, pass: e.SMTP_PASS } : undefined,
@@ -23,8 +23,9 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 const melbourne = (d: Date) =>
   new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short", timeZone: "Australia/Melbourne" }).format(d);
 
-export async function sendEnquiryEmail(q: Enquiry) {
+export async function sendEnquiryEmail(q: Enquiry): Promise<"sent" | "skipped"> {
   const e = env();
+  if (!e.SMTP_HOST || !e.ENQUIRY_EMAIL_TO) return "skipped";
   const rows: [string, string][] = [
     ["Name", q.name],
     ["Business / facility", q.business],
@@ -50,6 +51,7 @@ ${rows.map(([k, v]) => `<tr><td style="color:#5C7592;vertical-align:top;white-sp
     text,
     html,
   });
+  return "sent";
 }
 
 /** Swappable SMS provider. ClickSend is Australian and sends to AU mobiles without a local number. */
