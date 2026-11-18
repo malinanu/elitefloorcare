@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { services, site } from "@/content/site";
 import { Chevron, Menu } from "./icons";
 
 const links = [
@@ -13,7 +12,9 @@ const links = [
   { href: "/service-areas", label: "Where We Work" },
 ];
 
-export default function Header() {
+type NavService = { slug: string; navLabel: string };
+
+export default function Header({ services, phone, phoneHref, siteName }: { services: NavService[]; phone: string; phoneHref: string; siteName: string }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [ddOpen, setDdOpen] = useState(false);
@@ -53,7 +54,7 @@ export default function Header() {
   return (
     <header className="efc-header">
       <div className="efc-header-inner">
-        <Link href="/" className="efc-logo" aria-label={`${site.name} home`}>
+        <Link href="/" className="efc-logo" aria-label={`${siteName} home`}>
           <Image src="/assets/logo-dark-bg.png" alt="Elite Floor Care — Sports Floor Specialist" width={96} height={44} priority />
         </Link>
         <button
@@ -90,7 +91,7 @@ export default function Header() {
             <div className="efc-dropdown-menu" id="efc-services-menu">
               {services.map((s) => (
                 <Link key={s.slug} href={`/services/${s.slug}`} aria-current={current(`/services/${s.slug}`)} onClick={close}>
-                  {s.nav}
+                  {s.navLabel}
                 </Link>
               ))}
             </div>
@@ -100,8 +101,8 @@ export default function Header() {
               {l.label}
             </Link>
           ))}
-          <a href={site.phoneHref} className="efc-nav-phone">
-            {site.phone}
+          <a href={phoneHref} className="efc-nav-phone">
+            {phone}
           </a>
           <Link href="/#contact" className="efc-cta efc-nav-cta" onClick={close}>
             Free Inspection

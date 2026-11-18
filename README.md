@@ -1,137 +1,132 @@
-# Elite Sports Floor Care — website
+# Elite Sports Floor Care — website + CMS
 
-Next.js 15 (App Router, TypeScript) rebuild of the approved static redesign. Enquiries are stored in MySQL (CloudPanel-managed), emailed to the client over SMTP, and sent to the owner as an SMS alert through ClickSend.
-
-## Stack
+A Next.js 15 site with **Payload CMS 3** built in. Payload stores content in SQLite and uploads on disk.
+The client edits every page, photo, service, gallery project, testimonial, plan and contact detail in `/admin`.
+Inspection requests from the form are saved in the CMS (Admin → **Leads → Enquiries**), emailed to the client and sent to the owner as an SMS through ClickSend.
 
 | Concern | Choice |
 | --- | --- |
-| App | Next.js 15, React 19, `output: "standalone"`, run by PM2 on a CloudPanel Node.js site |
-| CI/CD | GitHub Actions: build on ARM64, deploy over SSH with atomic releases + rollback |
-| Styling | Design tokens in `app/globals.css` (Tailwind v4 `@theme`) + plain CSS in `styles/` |
-| Images | `next/image` (AVIF/WebP); sources in `public/` are pre-resized to ≤2400px |
-| Form | Server Action `app/actions/enquiry.ts`, zod validation |
-| DB | MySQL 8 / MariaDB + Drizzle ORM (`mysql2`); migrations in `drizzle/` run automatically on server start (`instrumentation.ts`) |
-| Email | nodemailer over SMTP (any provider) |
-| SMS | ClickSend (AU) behind `SMS_PROVIDER` switch: `clicksend` / `console` / `none` |
-| Spam | Honeypot field, Cloudflare Turnstile (optional), per-IP rate limit (salted IP hash, no raw IPs stored) |
+| App | Next.js 15.4 (App Router, `output: "standalone"`), React 19, Node 24 |
+| CMS | Payload 3 at `/admin` (UI) and `/api` (REST). GraphQL is off |
+| Data | SQLite through `@payloadcms/db-sqlite` (libsql). Migrations in `migrations/` run on boot |
+| Uploads | Disk (`MEDIA_DIR`), served at `/api/media/file/*`, optimised by `next/image` |
+| Cache | Pages read through `lib/cms.ts` (`unstable_cache`, tag `cms`). Every CMS save or delete revalidates, so edits show immediately |
+| Form | Server Action → zod, honeypot, Turnstile (optional), rate limit → save enquiry → email + SMS → record status |
+| Hosting | CloudPanel **Node.js site** on the Oracle Ampere (ARM64) server, run by PM2 as CloudPanel's guide does |
+| CI/CD | GitHub Actions builds on ARM64 and deploys over SSH, with atomic releases, health checks and rollback |
 
 ## Layout
 
 ```
-app/                      routes: /, /about, /services/[slug], /gallery, /service-areas, sitemap, robots
-app/actions/enquiry.ts    form pipeline
-components/               Header, Footer, Reveal (scroll-in motion), EnquiryForm, GalleryGrid, RecoatDepth (three.js), inner-page blocks
-content/                  site details, service-page copy (services.json), gallery projects
-lib/                      env (zod-validated), db, notify (email + SMS), guard (IP hash, rate limit, Turnstile)
-styles/                   home / inner / about / form CSS ported from the static design
-drizzle/                  SQL migrations
+app/(site)/            public pages: /, /about, /services/[slug], /gallery, /service-areas (+ 404)
+app/(payload)/         Payload admin + REST API (generated from the official template)
+app/actions/enquiry.ts form pipeline
+cms/                   collections, globals, access rules, seed (launch content)
+lib/cms.ts             cached CMS reads used by the pages
+lib/notify.ts          email (nodemailer) + SMS (ClickSend)
+migrations/            SQLite schema migrations (payload migrate:create)
+scripts/deploy.sh      server-side release activation (atomic swap, PM2, health check, rollback)
+scripts/backup.sh      nightly SQLite snapshot + uploads tarball
 ```
 
-Content edits: phone/email/address in `content/site.ts`; service pages in `content/services.json`; gallery in `content/gallery.ts`.
+## What the client can edit (Admin)
 
-## Enquiry pipeline
+- **Content**
+  - Services: the hero, the "what it involves" copy and checklist, the optional depth model, the steps, the before/after photos, the homepage card text and the SEO fields.
+  - Gallery projects, testimonials, maintenance plans and the media library.
+- **Pages:** Homepage, About, Gallery page and Where we work. All copy, stats, photos and lists.
+- **Settings:** phone, email, address, ABN, footer text and the facility-type chips.
+- **Leads:** enquiries, with a status (new → contacted → … → won or lost), internal notes, and whether the email and SMS were delivered.
 
-1. Honeypot filled → pretend success, store nothing.
-2. zod validation → field-level errors, values kept.
-3. Turnstile check (skipped if `TURNSTILE_SECRET_KEY` unset) and rate limit (`RATE_LIMIT_PER_HOUR`, default 5).
-4. **Insert into `enquiries` first** so a lead is never lost.
-5. Email + SMS in parallel; each result is written back to the row (`email_status`, `sms_status`, `*_error`).
-6. Visitor sees success once the row is saved, even if email/SMS failed (failures are logged).
-
-Find leads whose notifications failed:
-
-```sql
-select created_at, name, business, phone, email, email_status, email_error, sms_status, sms_error
-from enquiries where email_status <> 'sent' or sms_status not in ('sent','skipped') order by created_at desc;
-```
+Only signed-in admins can change anything. The public API can read published content only. It can't create or read enquiries, and it can't see users.
 
 ## Local development
 
 ```bash
 pnpm install
-cp .env.example .env.local     # point DATABASE_URL at a local MySQL/MariaDB; SMS_PROVIDER=console
-docker compose --profile dev up -d db mailpit   # optional: MySQL + Mailpit (http://localhost:8025)
-pnpm dev
+cp .env.example .env.local      # set PAYLOAD_SECRET, ADMIN_EMAIL/PASSWORD, SMS_PROVIDER=console
+pnpm dev                        # first boot creates the admin and loads the launch content
+open http://localhost:3000/admin
 ```
 
-`pnpm build` type-checks and lints. `npx drizzle-kit generate --name <change>` after editing `lib/db/schema.ts`.
+- **Schema change:**
+  1. Edit `cms/*.ts`.
+  2. Run `pnpm payload migrate:create <name>`.
+  3. Run `pnpm generate:types`.
+  4. Commit the new file in `migrations/`. Production applies it on the next boot.
+- **Reload launch content into a dev database:** run `pnpm seed`. This overwrites the page globals, so don't run it against live data.
 
 ## Deploy: CloudPanel + GitHub Actions
 
-Every push to `main` builds on GitHub (ARM64, to match the Oracle Ampere server) inside the `staging` environment and deploys over SSH.
-Pull requests only build, as a check, with no access to secrets or the server. Workflow: `.github/workflows/deploy.yml`.
+On every push to `main`, the `deploy` job runs inside the GitHub **`staging`** environment:
+1. Builds on `ubuntu-24.04-arm` (Node 24).
+2. Checks that the linux-arm64 sharp and libsql binaries are in the bundle.
+3. Uploads the release and runs `scripts/deploy.sh` as the site user.
+
+Pull requests only build, with no secrets and no server access.
 
 ```
-~/apps/elite/                  (APP_DIR, in the site user's home)
-├── releases/<git-sha>/        last 5 builds
-├── current -> releases/<sha>  what PM2 runs
-├── shared/.env                secrets — only on the server
-└── logs/                      PM2 out/error logs
+/home/<site-user>/htdocs/<domain>/      (APP_DIR)
+├── releases/<git-sha>/                 last 5 builds
+├── current -> releases/<sha>           what PM2 runs
+├── shared/.env                         secrets (never in git)
+├── shared/data/payload.db              SQLite — survives every deploy
+├── shared/media/                       CMS uploads — survive every deploy
+└── logs/                               PM2 logs
 ```
-
-`scripts/deploy.sh` unpacks the release, swaps `current` atomically, and reloads PM2. It then health-checks
-`127.0.0.1:$APP_PORT`. If that fails it **rolls back to the previous release** and fails the job.
 
 ### One-time server setup
 
-1. **CloudPanel → Add Site → Create a Node.js Site.**
-   - Enter the domain and pick **Node.js 22**.
-   - Set **App Port** to `3000`, or any free port you put in the `APP_PORT` variable.
-   - Note the **site user** it creates.
-   - CloudPanel's nginx vhost already proxies the domain to that port.
-2. **CloudPanel → Databases → Add Database.**
-   - Create database `efc` and a user.
-   - That gives you `DATABASE_URL=mysql://user:pass@127.0.0.1:3306/efc`.
-3. **SSL/TLS → New Let's Encrypt Certificate.**
-4. SSH in **as the site user** (`ssh <site-user>@<server>`):
+1. **In CloudPanel, create the site:** Add Site → Create a Node.js Site. Choose **Node.js 24 LTS** and App Port `3000`. Then issue a Let's Encrypt certificate under **SSL/TLS**.
+2. **SSH in as the site user:**
    ```bash
-   npm i -g pm2                                   # Node comes from CloudPanel (nvm)
-   mkdir -p ~/apps/elite/shared ~/.ssh
-   nano ~/apps/elite/shared/.env                  # fill from .env.example; chmod 600 it
-   chmod 600 ~/apps/elite/shared/.env
+   npm i -g pm2
+   mkdir -p ~/htdocs/<domain>/shared ~/.ssh
+   cp /dev/null ~/htdocs/<domain>/shared/.env && chmod 600 ~/htdocs/<domain>/shared/.env
+   nano ~/htdocs/<domain>/shared/.env           # fill from .env.example (PAYLOAD_SECRET, ADMIN_*, SMTP, ClickSend, IP_HASH_SALT)
    echo '<deploy public key>' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
-   (crontab -l 2>/dev/null; echo '@reboot bash -lc "pm2 resurrect"') | crontab -   # survive reboots
    ```
-5. Create a deploy key on your machine. Add its public half to the site user's `authorized_keys`, as in step 4:
-   ```bash
-   ssh-keygen -t ed25519 -N '' -C elite-deploy -f elite_deploy
-   ```
-6. **GitHub → Settings → Environments → `staging`.** The deploy job runs in this environment, and its secrets are only visible there:
+3. **Add the cron jobs** under CloudPanel → Sites → *site* → Cron Jobs:
+   - `@reboot pm2 resurrect` brings the site back after a server reboot.
+   - Run this nightly at 02:30, as `30 2 * * *`:
+     ```bash
+     APP_DIR=/home/<site-user>/htdocs/<domain> bash /home/<site-user>/htdocs/<domain>/current/scripts/backup.sh
+     ```
+4. **Add these to GitHub → Settings → Environments → `staging`:**
 
    | Kind | Name | Value |
    | --- | --- | --- |
-   | Secret | `SSH_HOST` | server IP or hostname |
-   | Secret | `SSH_PORT` | usually `22` |
-   | Secret | `SSH_USER` | the CloudPanel **site user**, not root, so PM2 runs as the site |
-   | Secret | `SSH_PRIVATE_KEY` | contents of `elite_deploy` (the private key) |
-   | Secret | `SSH_KNOWN_HOSTS` | output of `ssh-keyscan -p <SSH_PORT> <SSH_HOST>`; pins the server's host key |
+   | Secret | `SSH_HOST`, `SSH_PORT`, `SSH_USER` | server, port, the **site user** (not root) |
+   | Secret | `SSH_PRIVATE_KEY` | the deploy key (private half) |
+   | Secret | `SSH_KNOWN_HOSTS` | output of `ssh-keyscan -p <SSH_PORT> <SSH_HOST>` |
+   | Variable or secret | `APP_DIR` | `/home/<site-user>/htdocs/<domain>` |
    | Variable or secret | `NEXT_PUBLIC_SITE_URL` | `https://<domain>` |
-   | Variable or secret | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile site key (optional) |
-   | Variable | `APP_PORT` | CloudPanel App Port (optional, default `3000`) |
-   | Variable | `APP_DIR` | optional; defaults to `~/apps/elite` |
+   | Variable or secret | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | optional |
+   | Variable | `APP_PORT` | optional, default `3000` |
 
-   `NEXT_PUBLIC_*` values end up in the public JavaScript, so a variable is the better home for them. A secret also works.
-   Optional: under **Deployment protection rules → Required reviewers**, require approval for each deploy.
-   To add production later, create a `production` environment with its own values and copy the `deploy` job with `environment: production`.
-7. Push to `main`, or use **Actions → Build & deploy → Run workflow**.
+5. **Merge to `main`.** The first boot applies the migration, creates the admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` and loads the launch content. Then log in at `https://<domain>/admin` and change the password.
 
 ### Day to day
 
-- **Logs:** `pm2 logs elite-web`, or `~/apps/elite/logs/`.
+- **Logs:** `pm2 logs elite-web`, or `~/htdocs/<domain>/logs/`.
+- **Changed `shared/.env`:** `pm2 reload elite-web --update-env`.
 - **Manual rollback:**
   ```bash
-  ln -sfn ~/apps/elite/releases/<older-sha> ~/apps/elite/current && pm2 reload elite-web
+  ln -sfn ../releases/<older-sha> ~/htdocs/<domain>/current && pm2 reload elite-web
   ```
-- **Changing `shared/.env`:** run `pm2 reload elite-web --update-env`.
-- **Changing `NEXT_PUBLIC_*`:** update the GitHub variable and re-run the workflow, because those values are baked in at build time.
-- **Leads:** browse `enquiries` in CloudPanel's phpMyAdmin. Database backups use CloudPanel → Backups.
+- **Restore a backup:**
+  ```bash
+  pm2 stop elite-web
+  gunzip -c ~/backups/elite/payload-<stamp>.db.gz > ~/htdocs/<domain>/shared/data/payload.db
+  tar -xzf ~/backups/elite/media-<stamp>.tgz -C ~/htdocs/<domain>/shared
+  pm2 start elite-web
+  ```
 
-### Optional: Docker instead
+### Optional: Docker
 
-`Dockerfile` and `docker-compose.yml` (web + MySQL 8.4) remain for running it in containers behind a CloudPanel reverse-proxy site.
+`Dockerfile` and `docker-compose.yml` run the same app, with volumes for `/data` (SQLite) and `/media` (uploads).
 
 ## Before launch — needs the client
 
-- Gallery projects, testimonials and stats (40+ schools, 18 councils, 1,400+ courts, 1998, 11 staff) look like placeholder copy. Publishing invented testimonials or claims is a misleading-conduct risk under the Australian Consumer Law — confirm or replace.
-- SMTP account, ClickSend account + owner's mobile, Turnstile keys, final domain.
+- **Placeholder content:** the gallery projects, testimonials and stats (40+ schools, 18 councils, 1,400+ courts, 1998, 11 staff) look like placeholder copy. Publishing invented testimonials or claims is a misleading-conduct risk under the Australian Consumer Law. All of it is now editable in `/admin`, so the client can confirm or replace it there.
+- **Accounts and settings:** an SMTP account, a ClickSend account and the owner's mobile, Turnstile keys, and the final domain.

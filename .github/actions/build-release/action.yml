@@ -17,13 +17,13 @@ runs:
 
     - uses: actions/setup-node@v4
       with:
-        node-version: 22
+        node-version: 24
         cache: pnpm
 
     - uses: actions/cache@v4
       with:
         path: .next/cache
-        key: next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('app/**', 'components/**', 'lib/**', 'content/**', 'styles/**') }}
+        key: next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('app/**', 'components/**', 'lib/**', 'cms/**', 'styles/**', 'payload.config.ts') }}
         restore-keys: next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}-
 
     - shell: bash
@@ -35,6 +35,10 @@ runs:
         NEXT_TELEMETRY_DISABLED: "1"
         NEXT_PUBLIC_SITE_URL: ${{ inputs.site-url }}
         NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ inputs.turnstile-site-key }}
+        # The build never touches real data: placeholders only, nothing is seeded.
+        PAYLOAD_SECRET: build-time-placeholder-not-used-at-runtime-0000
+        DATABASE_URI: file:${{ runner.temp }}/build.db
+        SEED_ON_EMPTY: "false"
       run: pnpm build
 
     - name: Package release
@@ -46,11 +50,15 @@ runs:
         cp -a .next/standalone/. release/
         cp -a .next/static release/.next/static
         cp -a public release/public
-        cp -a drizzle release/drizzle
         cp ecosystem.config.cjs release/
-        # never ship local env files
+        mkdir -p release/scripts && cp scripts/backup.sh release/scripts/
+        # never ship env files, databases or uploads: those live in shared/ on the server
         find release -maxdepth 1 -name '.env*' -delete
-        # sharp must be the linux-arm64 (glibc) build, or images 500 on the Ampere server
+        rm -rf release/data release/media
+        # native modules must be the linux-arm64 (glibc) builds for the Ampere server:
+        #   sharp → image resizing; libsql → the SQLite driver behind Payload
         ls release/node_modules/.pnpm | grep -q '^@img+sharp-linux-arm64@' || { echo "::error::linux-arm64 sharp missing from bundle"; exit 1; }
+        ls release/node_modules/.pnpm | grep -q '^@libsql+linux-arm64-gnu@' || { echo "::error::linux-arm64 libsql missing from bundle"; exit 1; }
+        test -f release/cms/seed-data/services.json || { echo "::error::seed data missing from bundle"; exit 1; }
         tar -czf release.tgz -C release .
         du -h release.tgz

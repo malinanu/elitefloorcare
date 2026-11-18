@@ -1,7 +1,5 @@
-# Optional Docker route (CloudPanel Node.js site + GitHub Actions is the main one — see README): web + MySQL. Works as a Portainer "stack" (paste this file, add env vars in the UI)
-# or from the CLI:  docker compose --env-file .env up -d --build
-# Put CloudPanel / your reverse proxy in front of 127.0.0.1:3000 with TLS.
-
+# Optional Docker route. The main deploy is the CloudPanel Node.js site via GitHub Actions (see README).
+#   docker compose --env-file .env up -d --build
 services:
   web:
     build:
@@ -12,32 +10,13 @@ services:
     image: elite-web:latest
     restart: unless-stopped
     env_file: .env
-    environment:
-      DATABASE_URL: mysql://efc:${MYSQL_PASSWORD}@db:3306/efc
     ports:
-      - "127.0.0.1:3000:3000" # only the reverse proxy should reach it
-    depends_on:
-      db:
-        condition: service_healthy
-
-  db:
-    image: mysql:8.4
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: efc
-      MYSQL_USER: efc
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
-      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      - "127.0.0.1:3000:3000"
     volumes:
-      - efc-db:/var/lib/mysql
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uefc -p$$MYSQL_PASSWORD --silent"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      - efc-data:/data     # SQLite (Payload)
+      - efc-media:/media   # CMS uploads
 
   # Local testing only: catches outgoing mail at http://localhost:8025
-  #   docker compose --profile dev up mailpit   and set SMTP_HOST=mailpit SMTP_PORT=1025 SMTP_SECURE=false
   mailpit:
     image: axllent/mailpit:v1.21
     profiles: ["dev"]
@@ -46,4 +25,5 @@ services:
       - "127.0.0.1:1025:1025"
 
 volumes:
-  efc-db:
+  efc-data:
+  efc-media:

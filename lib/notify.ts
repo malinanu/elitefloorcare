@@ -1,7 +1,7 @@
 import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "@/lib/env";
-import type { Enquiry } from "@/lib/db/schema";
+import type { Enquiry } from "@/payload-types";
 
 let transporter: Transporter | undefined;
 function mailer() {
@@ -33,8 +33,8 @@ export async function sendEnquiryEmail(q: Enquiry) {
     ["Location", q.location],
     ["Facility type", q.facilityType],
     ["Message", q.message || "—"],
-    ["Received", melbourne(q.createdAt)],
-    ["Reference", q.id],
+    ["Received", melbourne(new Date(q.createdAt))],
+    ["Reference", String(q.id)],
   ];
   const text = `New free-inspection request\n\n${rows.map(([k, v]) => `${k}: ${v}`).join("\n")}\n`;
   const html = `<h2 style="font-family:Arial,sans-serif;color:#061A3D">New free-inspection request</h2>

@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { galleryFilters, projects } from "@/content/gallery";
-import { BeforeAfterPair } from "./inner";
+import { BeforeAfterPair, type Pic } from "./inner";
+
+export type GalleryProject = { id: number | string; title: string; sector: string; work: string; before: Pic; after: Pic };
 
 const PAGE_SIZE = 4;
 
-export default function GalleryGrid() {
-  const [filter, setFilter] = useState<(typeof galleryFilters)[number]>("All");
+export default function GalleryGrid({ projects, sectors }: { projects: GalleryProject[]; sectors: string[] }) {
+  const galleryFilters = ["All", ...sectors];
+  const [filter, setFilter] = useState("All");
   const [limit, setLimit] = useState(PAGE_SIZE);
 
   const matching = projects.filter((p) => filter === "All" || p.sector === filter);

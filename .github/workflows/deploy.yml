@@ -57,6 +57,7 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           ok=1
+          [ -n "$APP_DIR" ] || { echo "::error::APP_DIR is not set in the staging environment (e.g. /home/<site-user>/htdocs/<domain>)"; ok=0; }
           for v in SITE_URL SSH_PRIVATE_KEY SSH_HOST SSH_USER; do
             [ -n "${!v}" ] || { echo "::error::'${v/SITE_URL/NEXT_PUBLIC_SITE_URL}' is not set in the staging environment"; ok=0; }
           done

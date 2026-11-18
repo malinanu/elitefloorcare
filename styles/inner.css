@@ -186,3 +186,10 @@
 .rd-ctrls button:disabled { opacity: .4; cursor: not-allowed; }
 .rd-reset { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--royal); text-decoration: underline; background: none; border: none; padding: 0; }
 .rd-note { position: absolute; right: 14px; bottom: 16px; color: var(--royal); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+
+/* rich text from the CMS (Payload lexical) */
+.pg-rich p { color: var(--navy); font-size: 17px; line-height: 1.65; margin: 0 0 16px; text-wrap: pretty; }
+.pg-rich p:last-child { margin-bottom: 0; }
+.pg-rich a, .pg-note a { color: var(--royal); text-decoration: underline; }
+.pg-rich ul, .pg-rich ol { color: var(--navy); font-size: 17px; line-height: 1.65; padding-left: 1.2em; margin: 0 0 16px; }
+.pg-rich h2, .pg-rich h3, .pg-rich h4 { color: var(--navy); text-transform: uppercase; margin: 24px 0 10px; }

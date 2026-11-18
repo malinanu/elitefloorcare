@@ -3,7 +3,8 @@ import { z } from "zod";
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  DATABASE_URL: z.string().url(),
+  DATABASE_URI: z.string().startsWith("file:", "DATABASE_URI must be a SQLite file: URL"),
+  PAYLOAD_SECRET: z.string().min(32, "PAYLOAD_SECRET must be at least 32 characters (openssl rand -hex 32)"),
 
   // email (any SMTP provider: Resend SMTP, Zoho, Microsoft 365, the client's mail host…)
   SMTP_HOST: z.string().min(1),

@@ -4,12 +4,17 @@
 #
 #   deploy.sh <path-to-release.tgz> <release-id>
 #
-# Env: APP_DIR (default ~/apps/elite), APP_PORT (default 3000), KEEP_RELEASES (default 5), PM2_NAME (default elite-web)
+# Env: APP_DIR (required: the CloudPanel site folder, e.g. /home/<site-user>/htdocs/<domain>),
+#      APP_PORT (default 3000), KEEP_RELEASES (default 5), PM2_NAME (default elite-web)
+#
+# Layout under APP_DIR — the SQLite database and uploads live in shared/, so they survive every deploy:
+#   releases/<sha>/  current -> releases/<sha>  shared/.env  shared/data/payload.db  shared/media/  logs/
 set -Eeuo pipefail
 
 TARBALL=${1:?usage: deploy.sh <release.tgz> <release-id>}
 RELEASE_ID=${2:?usage: deploy.sh <release.tgz> <release-id>}
-export APP_DIR=${APP_DIR:-$HOME/apps/elite}
+[ -n "${APP_DIR:-}" ] || { echo "[deploy] ERROR: APP_DIR is not set (e.g. /home/<site-user>/htdocs/<domain>)" >&2; exit 1; }
+export APP_DIR
 export APP_PORT=${APP_PORT:-3000}
 export PM2_NAME=${PM2_NAME:-elite-web}
 KEEP_RELEASES=${KEEP_RELEASES:-5}
@@ -18,18 +23,24 @@ log() { printf '[deploy] %s\n' "$*"; }
 die() { printf '[deploy] ERROR: %s\n' "$*" >&2; exit 1; }
 
 # CloudPanel installs Node per site user through nvm; non-interactive SSH doesn't load it.
-if ! command -v node >/dev/null 2>&1 && [ -s "$HOME/.nvm/nvm.sh" ]; then
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
   # shellcheck disable=SC1091
   . "$HOME/.nvm/nvm.sh" >/dev/null
+  nvm use --silent 24 >/dev/null 2>&1 || nvm use --silent default >/dev/null 2>&1 || true
 fi
 command -v node >/dev/null || die "node not found for $(whoami) — create the site as a CloudPanel Node.js site"
 command -v pm2 >/dev/null || die "pm2 not found — run: npm i -g pm2"
 [ -f "$APP_DIR/shared/.env" ] || die "missing $APP_DIR/shared/.env (copy .env.example and fill it in)"
 
 NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]')
-[ "$NODE_MAJOR" -ge 20 ] || die "Node $NODE_MAJOR is too old; pick Node 22 in CloudPanel"
+[ "$NODE_MAJOR" -ge 22 ] || die "Node $NODE_MAJOR is too old; pick Node 24 LTS in CloudPanel"
 
-mkdir -p "$APP_DIR/releases" "$APP_DIR/logs"
+mkdir -p "$APP_DIR/releases" "$APP_DIR/logs" "$APP_DIR/shared/data" "$APP_DIR/shared/media"
+ENV_FILE="$APP_DIR/shared/.env"
+grep -q "^PAYLOAD_SECRET=..*" "$ENV_FILE" || die "PAYLOAD_SECRET missing in shared/.env (openssl rand -hex 32)"
+# Database and uploads must live in shared/ (outside releases). Add the defaults once if absent.
+grep -q "^DATABASE_URI=" "$ENV_FILE" || { printf '\nDATABASE_URI=file:%s\n' "$APP_DIR/shared/data/payload.db" >> "$ENV_FILE"; log "added DATABASE_URI to shared/.env"; }
+grep -q "^MEDIA_DIR=" "$ENV_FILE" || { printf 'MEDIA_DIR=%s\n' "$APP_DIR/shared/media" >> "$ENV_FILE"; log "added MEDIA_DIR to shared/.env"; }
 NEW="$APP_DIR/releases/$RELEASE_ID"
 PREV=$(readlink -f "$APP_DIR/current" 2>/dev/null || true)
 
