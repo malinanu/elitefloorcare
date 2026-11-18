@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 25
     environment:
       name: staging
-      url: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
+      url: ${{ vars.NEXT_PUBLIC_SITE_URL }} # environment.url can't read secrets
     concurrency:
       group: deploy-staging
       cancel-in-progress: false # never kill a deploy half way; queue the next one
