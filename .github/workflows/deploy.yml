@@ -105,6 +105,12 @@ jobs:
           fi
           sed -i -e '$a\' ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          # SSH_PORT closed but 22 open (seen on this server): use 22 rather than fail.
+          tcp() { timeout 6 bash -c "exec 3<>/dev/tcp/$1/$2" 2>/dev/null; }
+          if [ "$SSH_PORT" != 22 ] && [[ "$SSH_HOST" =~ ^[A-Za-z0-9.:-]+$ ]] && ! tcp "$SSH_HOST" "$SSH_PORT" && tcp "$SSH_HOST" 22; then
+            echo "::warning::SSH_PORT in the staging environment is closed to GitHub, but port 22 is open, so this deploy uses 22. Set SSH_PORT to 22 (or delete it) to silence this."
+            SSH_PORT=22
+          fi
           if [ -n "$SSH_KNOWN_HOSTS" ]; then
             printf '%s\n' "$SSH_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
           else
