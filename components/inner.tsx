@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { crossSell, type ServiceSlug } from "@/content/site";
-import { RawIcon, Tick } from "./icons";
+import { KeyIcon, Tick } from "./icons";
 
 type Crumb = { href?: string; label: string };
 
@@ -28,7 +27,7 @@ export function PhotoHero({ image, alt, title, lead, crumbs }: { image: string; 
       <div className="pg-hero-inner">
         <Crumbs items={crumbs} />
         <h1>{title}</h1>
-        <p className="pg-hero-lead" dangerouslySetInnerHTML={{ __html: lead }} />
+        <p className="pg-hero-lead">{lead}</p>
         <div>
           <Link href="/#contact" className="efc-cta pg-btn">
             Request a Free Inspection
@@ -81,23 +80,22 @@ export function BeforeAfterPair({ before, after, labels = ["Before", "After"], s
   );
 }
 
-export function CrossSell({ current, eyebrow = "Also from us" }: { current: ServiceSlug; eyebrow?: string }) {
-  const others = (Object.keys(crossSell) as ServiceSlug[]).filter((s) => s !== current);
+type XsService = { slug: string; title: string; icon: string; crossSellTagline: string };
+
+export function CrossSell({ current, services, eyebrow = "Also from us" }: { current: string; services: XsService[]; eyebrow?: string }) {
+  const others = services.filter((s) => s.slug !== current);
   return (
     <section className="ps ps-sm ps-mist">
       <div className="pg-wrap">
         <span className="pg-eyebrow rv">{eyebrow}</span>
         <div className="pg-xs">
-          {others.map((slug) => {
-            const c = crossSell[slug];
-            return (
-              <Link key={slug} href={`/services/${slug}`} className="pg-xs-card rv">
-                <RawIcon paths={c.icon} />
-                <span className="pg-xs-title">{c.title}</span>
-                <span className="pg-xs-tag">{c.tagline} →</span>
-              </Link>
-            );
-          })}
+          {others.map((c) => (
+            <Link key={c.slug} href={`/services/${c.slug}`} className="pg-xs-card rv">
+              <KeyIcon name={c.icon} variant="crossSell" size={26} sw={1.5} />
+              <span className="pg-xs-title">{c.title}</span>
+              <span className="pg-xs-tag">{c.crossSellTagline} →</span>
+            </Link>
+          ))}
         </div>
       </div>
     </section>

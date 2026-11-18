@@ -1,8 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { and, count, eq, gt } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
+import { cms } from "@/lib/cms";
 
 /** Client IP from the reverse proxy chain (Cloudflare first, then the first X-Forwarded-For hop). */
 export function clientIp(h: Headers): string {
@@ -14,14 +13,14 @@ export function hashIp(ip: string) {
   return createHash("sha256").update(`${env().IP_HASH_SALT}:${ip}`).digest("hex");
 }
 
-/** Rate limit backed by the enquiries table itself, so it works across restarts and replicas. */
+/** Rate limit backed by the enquiries collection itself, so it survives restarts. */
 export async function overRateLimit(ipHash: string) {
-  const since = new Date(Date.now() - 60 * 60 * 1000);
-  const [row] = await db()
-    .select({ n: count() })
-    .from(schema.enquiries)
-    .where(and(eq(schema.enquiries.ipHash, ipHash), gt(schema.enquiries.createdAt, since)));
-  return (row?.n ?? 0) >= env().RATE_LIMIT_PER_HOUR;
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { totalDocs } = await (await cms()).count({
+    collection: "enquiries",
+    where: { and: [{ ipHash: { equals: ipHash } }, { createdAt: { greater_than: since } }] },
+  });
+  return totalDocs >= env().RATE_LIMIT_PER_HOUR;
 }
 
 /** Cloudflare Turnstile server-side check. Skipped (returns true) when no secret is configured. */

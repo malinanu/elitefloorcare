@@ -1,8 +1,7 @@
 "use server";
 
-import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
-import { db, schema } from "@/lib/db";
+import { cms } from "@/lib/cms";
 import { enquirySchema, type EnquiryInput, type EnquiryState } from "@/lib/enquiry-schema";
 import { clientIp, hashIp, overRateLimit, verifyTurnstile } from "@/lib/guard";
 import { sendEnquiryEmail, sendEnquirySms } from "@/lib/notify";
@@ -43,28 +42,33 @@ export async function submitEnquiry(_prev: EnquiryState, formData: FormData): Pr
       return { status: "error", message: "Too many requests from your connection. Please call us on 1300 353 667 instead.", values };
     }
 
-    // 4. persist FIRST — a lead is never lost even if email/SMS fail
-    const [row] = await db()
-      .insert(schema.enquiries)
-      .values({ ...parsed.data, message: parsed.data.message || null, ipHash, userAgent: h.get("user-agent")?.slice(0, 300) ?? null })
-      .returning();
+    // 4. persist FIRST — a lead is never lost even if email/SMS fail.
+    //    Local API runs with overrideAccess, so this works even though the public API can't create enquiries.
+    const payload = await cms();
+    const row = await payload.create({
+      collection: "enquiries",
+      data: { ...parsed.data, message: parsed.data.message || null, ipHash, userAgent: h.get("user-agent")?.slice(0, 300) ?? null },
+      depth: 0,
+    });
 
-    // 5. notify in parallel; record each outcome on the row
+    // 5. notify in parallel; record each outcome on the row (visible in the admin sidebar)
     const [mail, sms] = await Promise.allSettled([sendEnquiryEmail(row), sendEnquirySms(row)]);
-    await db()
-      .update(schema.enquiries)
-      .set({
-        emailStatus: mail.status === "fulfilled" ? "sent" : "failed",
+    await payload.update({
+      collection: "enquiries",
+      id: row.id,
+      data: {
+        emailStatus: mail.status === "fulfilled" ? mail.value : "failed",
         emailError: mail.status === "rejected" ? errText(mail.reason) : null,
         smsStatus: sms.status === "fulfilled" ? sms.value : "failed",
         smsError: sms.status === "rejected" ? errText(sms.reason) : null,
-      })
-      .where(eq(schema.enquiries.id, row.id));
+      },
+      depth: 0,
+    });
     if (mail.status === "rejected") console.error(`[enquiry ${row.id}] email failed:`, mail.reason);
     if (sms.status === "rejected") console.error(`[enquiry ${row.id}] sms failed:`, sms.reason);
 
     // 6. the enquiry is stored, so the visitor sees success either way
-    return { status: "success", ref: row.id.slice(0, 8).toUpperCase() };
+    return { status: "success", ref: String(row.id) };
   } catch (err) {
     console.error("[enquiry] could not be saved", err);
     return { status: "error", message: "Something went wrong on our side. Please call us on 1300 353 667 or try again shortly.", values };

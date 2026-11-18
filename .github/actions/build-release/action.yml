@@ -1,0 +1,65 @@
+name: Build release
+description: Install, build (type-check + lint + compile) and package the Next.js standalone release as release.tgz
+
+inputs:
+  site-url:
+    description: NEXT_PUBLIC_SITE_URL baked into the build
+    required: true
+  turnstile-site-key:
+    description: NEXT_PUBLIC_TURNSTILE_SITE_KEY baked into the build (optional)
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4 # version comes from package.json "packageManager"
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24
+        cache: pnpm
+
+    - uses: actions/cache@v4
+      with:
+        path: .next/cache
+        key: next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('app/**', 'components/**', 'lib/**', 'cms/**', 'styles/**', 'payload.config.ts') }}
+        restore-keys: next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}-
+
+    - shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Build (type-check + lint + compile)
+      shell: bash
+      env:
+        NEXT_TELEMETRY_DISABLED: "1"
+        NEXT_PUBLIC_SITE_URL: ${{ inputs.site-url }}
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ inputs.turnstile-site-key }}
+        # The build never touches real data: placeholders only, nothing is seeded.
+        PAYLOAD_SECRET: build-time-placeholder-not-used-at-runtime-0000
+        DATABASE_URI: file:${{ runner.temp }}/build.db
+        SEED_ON_EMPTY: "false"
+      run: pnpm build
+
+    - name: Package release
+      shell: bash
+      run: |
+        set -euo pipefail
+        rm -rf release release.tgz
+        mkdir -p release
+        cp -a .next/standalone/. release/
+        cp -a .next/static release/.next/static
+        cp -a public release/public
+        cp ecosystem.config.cjs release/
+        mkdir -p release/scripts && cp scripts/backup.sh release/scripts/
+        # never ship env files, databases or uploads: those live in shared/ on the server
+        find release -maxdepth 1 -name '.env*' -delete
+        rm -rf release/data release/media
+        # native modules must be the linux-arm64 (glibc) builds for the Ampere server:
+        #   sharp → image resizing; libsql → the SQLite driver behind Payload
+        echo "native modules in bundle:"; find -L release/node_modules -name '*.node' \( -path '*sharp*' -o -path '*libsql*' \) 2>/dev/null | sed 's#^release/##' | sort -u
+        find -L release/node_modules -name '*.node' -path '*sharp-linux-arm64*' 2>/dev/null | grep -q . || { echo "::error::linux-arm64 sharp binary missing from bundle"; exit 1; }
+        find -L release/node_modules -name '*.node' -path '*libsql*linux-arm64-gnu*' 2>/dev/null | grep -q . || { echo "::error::linux-arm64 libsql binary missing from bundle"; exit 1; }
+        test -f release/cms/seed-data/services.json || { echo "::error::seed data missing from bundle"; exit 1; }
+        tar -czf release.tgz -C release .
+        du -h release.tgz

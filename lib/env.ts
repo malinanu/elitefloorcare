@@ -3,10 +3,11 @@ import { z } from "zod";
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  DATABASE_URL: z.string().url(),
+  DATABASE_URI: z.string().startsWith("file:", "DATABASE_URI must be a SQLite file: URL"),
+  PAYLOAD_SECRET: z.string().min(32, "PAYLOAD_SECRET must be at least 32 characters (openssl rand -hex 32)"),
 
   // email (any SMTP provider: Resend SMTP, Zoho, Microsoft 365, the client's mail host…)
-  SMTP_HOST: z.string().min(1),
+  SMTP_HOST: z.string().optional(), // unset → enquiry emails are skipped (leads are still saved in the CMS)
   SMTP_PORT: z.coerce.number().int().positive().default(587),
   SMTP_SECURE: z
     .enum(["true", "false"])
@@ -14,8 +15,8 @@ const schema = z.object({
     .transform((v) => v === "true"),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
-  MAIL_FROM: z.string().min(3), // e.g. "Elite Sports Floor Care <no-reply@elitesportsfloorcare.com.au>"
-  ENQUIRY_EMAIL_TO: z.string().min(3), // comma-separated list allowed
+  MAIL_FROM: z.string().default("Elite Sports Floor Care <no-reply@localhost>"),
+  ENQUIRY_EMAIL_TO: z.string().optional(), // comma-separated list allowed
 
   // SMS alert to the owner
   SMS_PROVIDER: z.enum(["clicksend", "console", "none"]).default("none"),

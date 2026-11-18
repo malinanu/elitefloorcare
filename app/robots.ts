@@ -1,10 +1,10 @@
 import type { MetadataRoute } from "next";
-import { site } from "@/content/site";
 
 export default function robots(): MetadataRoute.Robots {
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://elitesportsfloorcare.com.au";
   return {
-    rules: { userAgent: "*", allow: "/" },
-    sitemap: `${site.url}/sitemap.xml`,
-    host: site.url,
+    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/api/"] },
+    sitemap: `${base}/sitemap.xml`,
+    host: base,
   };
 }

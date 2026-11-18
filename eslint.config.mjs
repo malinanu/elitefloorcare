@@ -18,6 +18,10 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "ecosystem.config.cjs",
+      "migrations/**",
+      "payload-types.ts",
+      "app/(payload)/admin/importMap.js",
     ],
   },
 ];

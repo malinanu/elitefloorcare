@@ -1,13 +1,13 @@
 import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "@/lib/env";
-import type { Enquiry } from "@/lib/db/schema";
+import type { Enquiry } from "@/payload-types";
 
 let transporter: Transporter | undefined;
 function mailer() {
   const e = env();
   transporter ??= nodemailer.createTransport({
-    host: e.SMTP_HOST,
+    host: e.SMTP_HOST!,
     port: e.SMTP_PORT,
     secure: e.SMTP_SECURE,
     auth: e.SMTP_USER ? { user: e.SMTP_USER, pass: e.SMTP_PASS } : undefined,
@@ -23,8 +23,9 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 const melbourne = (d: Date) =>
   new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short", timeZone: "Australia/Melbourne" }).format(d);
 
-export async function sendEnquiryEmail(q: Enquiry) {
+export async function sendEnquiryEmail(q: Enquiry): Promise<"sent" | "skipped"> {
   const e = env();
+  if (!e.SMTP_HOST || !e.ENQUIRY_EMAIL_TO) return "skipped";
   const rows: [string, string][] = [
     ["Name", q.name],
     ["Business / facility", q.business],
@@ -33,8 +34,8 @@ export async function sendEnquiryEmail(q: Enquiry) {
     ["Location", q.location],
     ["Facility type", q.facilityType],
     ["Message", q.message || "—"],
-    ["Received", melbourne(q.createdAt)],
-    ["Reference", q.id],
+    ["Received", melbourne(new Date(q.createdAt))],
+    ["Reference", String(q.id)],
   ];
   const text = `New free-inspection request\n\n${rows.map(([k, v]) => `${k}: ${v}`).join("\n")}\n`;
   const html = `<h2 style="font-family:Arial,sans-serif;color:#061A3D">New free-inspection request</h2>
@@ -50,6 +51,7 @@ ${rows.map(([k, v]) => `<tr><td style="color:#5C7592;vertical-align:top;white-sp
     text,
     html,
   });
+  return "sent";
 }
 
 /** Swappable SMS provider. ClickSend is Australian and sends to AU mobiles without a local number. */
