@@ -61,6 +61,14 @@ jobs:
             [ -n "${!v}" ] || { echo "::error::'${v/SITE_URL/NEXT_PUBLIC_SITE_URL}' is not set in the staging environment"; ok=0; }
           done
           [ "$ok" = 1 ] || exit 1
+          # Accept the CloudPanel site folder (/home/<user>/htdocs/<domain>) in place of the URL:
+          # it gives both the folder and the domain.
+          trimmed=$(printf '%s' "$SITE_URL" | tr -d '"\r' | xargs)
+          if [[ "$trimmed" =~ ^/home/[^/]+/htdocs/([A-Za-z0-9.-]+\.[A-Za-z]{2,})/?$ ]]; then
+            [ -n "$APP_DIR_SET" ] || APP_DIR_SET=${trimmed%/}
+            SITE_URL="https://${BASH_REMATCH[1]}"
+            echo "::notice::NEXT_PUBLIC_SITE_URL holds the site folder; using it as APP_DIR and $SITE_URL as the site address."
+          fi
           # Normalise the site URL: trim spaces/quotes, add https:// if missing, keep only the origin.
           if ! url=$(node -e '
               let v = process.argv[1].trim().replace(/^["\x27]+|["\x27]+$/g, "").trim();
