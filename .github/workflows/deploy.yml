@@ -41,7 +41,7 @@ jobs:
     env:
       SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
       APP_DIR_SET: ${{ vars.APP_DIR || secrets.APP_DIR }}
-      APP_PORT: ${{ vars.APP_PORT || secrets.APP_PORT || '3000' }}
+      APP_PORT: ${{ vars.APP_PORT || secrets.APP_PORT }} # empty → deploy.sh reads the site's App Port from CloudPanel
       SSH_USER: ${{ secrets.SSH_USER }}
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +75,7 @@ jobs:
     env:
       SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
       APP_DIR_SET: ${{ vars.APP_DIR || secrets.APP_DIR }}
-      APP_PORT: ${{ vars.APP_PORT || secrets.APP_PORT || '3000' }}
+      APP_PORT: ${{ vars.APP_PORT || secrets.APP_PORT }} # empty → deploy.sh reads the site's App Port from CloudPanel
       SSH_USER: ${{ secrets.SSH_USER }}
     steps:
       - uses: actions/checkout@v4
@@ -196,7 +196,7 @@ jobs:
             echo "$path → $code"
           done
           code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$SITE_URL/sitemap.xml" || true)
-          [ "$code" = 200 ] || echo "::warning::the app is healthy on the server but $SITE_URL/sitemap.xml returned $code — check the site's App Port in CloudPanel matches APP_PORT ($APP_PORT)."
+          [ "$code" = 200 ] || echo "::warning::the app is healthy on the server but $SITE_URL/sitemap.xml returned $code — check the deploy log above for the port the app is on, and that it matches the site's App Port in CloudPanel."
 
       - name: Clean up key
         if: always()

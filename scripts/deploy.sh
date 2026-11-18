@@ -5,7 +5,7 @@
 #   deploy.sh <path-to-release.tgz> <release-id>
 #
 # Env: APP_DIR (required: the CloudPanel site folder, e.g. /home/<site-user>/htdocs/<domain>),
-#      APP_PORT (default 3000), KEEP_RELEASES (default 5), PM2_NAME (default elite-web),
+#      APP_PORT (default: the site's App Port from CloudPanel's nginx vhost, else 3000), KEEP_RELEASES (default 5), PM2_NAME (default elite-web),
 #      APP_ENV_FILE (optional: KEY=VALUE lines from GitHub, merged into shared/.env then deleted)
 # First run on a fresh CloudPanel Node.js site needs nothing else: it installs pm2, creates
 # shared/.env, generates PAYLOAD_SECRET / IP_HASH_SALT, and the app seeds the CMS on boot.
@@ -18,7 +18,23 @@ TARBALL=${1:?usage: deploy.sh <release.tgz> <release-id>}
 RELEASE_ID=${2:?usage: deploy.sh <release.tgz> <release-id>}
 [ -n "${APP_DIR:-}" ] || { echo "[deploy] ERROR: APP_DIR is not set (e.g. /home/<site-user>/htdocs/<domain>)" >&2; exit 1; }
 export APP_DIR
-export APP_PORT=${APP_PORT:-3000}
+# The App Port CloudPanel chose for this site lives in its nginx vhost: proxy_pass http://127.0.0.1:<port>.
+detect_app_port() {
+  local domain f port
+  domain=$(basename "$APP_DIR")
+  for f in /etc/nginx/sites-enabled/"$domain".conf /etc/nginx/sites-enabled/*; do
+    [ -r "$f" ] || continue
+    grep -qE "server_name[^;]*\b${domain//./\\.}\b" "$f" 2>/dev/null || continue
+    port=$(grep -oE 'proxy_pass +https?://(127\.0\.0\.1|localhost):[0-9]+' "$f" | head -1 | grep -oE '[0-9]+$')
+    [ -n "$port" ] && { echo "$port"; return; }
+  done
+}
+if [ -z "${APP_PORT:-}" ]; then
+  APP_PORT=$(detect_app_port || true)
+  if [ -n "$APP_PORT" ]; then echo "[deploy] App Port from CloudPanel's nginx config: $APP_PORT"
+  else APP_PORT=3000; echo "[deploy] couldn't read the site's nginx config; using App Port 3000"; fi
+fi
+export APP_PORT
 export PM2_NAME=${PM2_NAME:-elite-web}
 KEEP_RELEASES=${KEEP_RELEASES:-5}
 
@@ -90,13 +106,25 @@ if [ ! -s "$APP_DIR/shared/data/payload.db" ]; then
   fi
 fi
 
-# Something else on the App Port (an old app, CloudPanel's sample) would make our start fail.
-if command -v ss >/dev/null 2>&1 && ss -ltn "sport = :$APP_PORT" | grep -q LISTEN; then
-  if ! pm2 jlist 2>/dev/null | node -e '
-      let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const a=JSON.parse(d||"[]");
-      process.exit(a.some(p=>p.name===process.argv[1]&&p.pm2_env.status==="online")?0:1)})' "$PM2_NAME"; then
-    pm2 ls || true
-    die "port $APP_PORT is already in use by another process (see pm2 ls above). Stop it with 'pm2 delete <name> && pm2 save', or set APP_PORT to CloudPanel's App Port."
+# Something else on the App Port (another site's app, an old process) would make our start fail.
+port_owner() { # prints the username owning the IPv4/IPv6 listener on $1 (from /proc/net/tcp*, no root needed)
+  local hex uid
+  hex=$(printf '%04X' "$1")
+  uid=$(awk -v p=":$hex" '$4=="0A" && $2 ~ p"$" {print $8; exit}' /proc/net/tcp /proc/net/tcp6 2>/dev/null)
+  [ -n "$uid" ] && { getent passwd "$uid" | cut -d: -f1 || echo "uid $uid"; }
+}
+owner=$(port_owner "$APP_PORT" || true)
+if [ -n "$owner" ]; then
+  ours=no
+  pm2 jlist 2>/dev/null | node -e '
+    let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const a=JSON.parse(d||"[]");
+    process.exit(a.some(p=>p.name===process.argv[1]&&p.pm2_env.status==="online")?0:1)})' "$PM2_NAME" && ours=yes
+  if [ "$ours" = no ]; then
+    if [ "$owner" = "$(whoami)" ]; then
+      pm2 ls || true
+      die "port $APP_PORT is already used by another process of $(whoami) (see pm2 ls above). Remove it with 'pm2 delete <name> && pm2 save'."
+    fi
+    die "port $APP_PORT is already used by user '$owner' — another site on this server. In CloudPanel, give this site its own App Port (Sites → $(basename "$APP_DIR") → Settings), then re-run; the deploy picks it up automatically."
   fi
 fi
 
