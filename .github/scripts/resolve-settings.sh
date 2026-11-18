@@ -35,5 +35,5 @@ echo "Site: $url"
 domain=$(node -e 'process.stdout.write(new URL(process.argv[1]).hostname)' "$url")
 app_dir=${APP_DIR_SET:-/home/$SSH_USER/htdocs/$domain}
 echo "APP_DIR=$app_dir" >> "$GITHUB_ENV"
-echo "Deploying to $SSH_USER@<host>:$app_dir (port $APP_PORT)"
+echo "Deploying to $SSH_USER@<host>:$app_dir (app port: ${APP_PORT:-from CloudPanel})"
 [ -n "$ADMIN_EMAIL" ] || echo "::notice::ADMIN_EMAIL is not set — the first deploy creates admin@$domain with a generated password (saved on the server in shared/INITIAL_ADMIN_PASSWORD.txt)."
