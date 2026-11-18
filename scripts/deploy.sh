@@ -61,9 +61,9 @@ reload() {
   pm2 save >/dev/null
 }
 
-healthy() {
+healthy() { # sitemap.xml reads from the CMS, so this proves the database driver works too
   for _ in $(seq 1 30); do
-    if curl -fsS -o /dev/null --max-time 3 "http://127.0.0.1:$APP_PORT/robots.txt"; then return 0; fi
+    if curl -fsS -o /dev/null --max-time 10 "http://127.0.0.1:$APP_PORT/sitemap.xml"; then return 0; fi
     sleep 1
   done
   return 1

@@ -57,8 +57,9 @@ runs:
         rm -rf release/data release/media
         # native modules must be the linux-arm64 (glibc) builds for the Ampere server:
         #   sharp → image resizing; libsql → the SQLite driver behind Payload
-        ls release/node_modules/.pnpm | grep -q '^@img+sharp-linux-arm64@' || { echo "::error::linux-arm64 sharp missing from bundle"; exit 1; }
-        ls release/node_modules/.pnpm | grep -q '^@libsql+linux-arm64-gnu@' || { echo "::error::linux-arm64 libsql missing from bundle"; exit 1; }
+        echo "native modules in bundle:"; find -L release/node_modules -name '*.node' \( -path '*sharp*' -o -path '*libsql*' \) 2>/dev/null | sed 's#^release/##' | sort -u
+        find -L release/node_modules -name '*.node' -path '*sharp-linux-arm64*' 2>/dev/null | grep -q . || { echo "::error::linux-arm64 sharp binary missing from bundle"; exit 1; }
+        find -L release/node_modules -name '*.node' -path '*libsql*linux-arm64-gnu*' 2>/dev/null | grep -q . || { echo "::error::linux-arm64 libsql binary missing from bundle"; exit 1; }
         test -f release/cms/seed-data/services.json || { echo "::error::seed data missing from bundle"; exit 1; }
         tar -czf release.tgz -C release .
         du -h release.tgz
