@@ -59,8 +59,8 @@ pnpm dev
 
 ## Deploy: CloudPanel + GitHub Actions
 
-Every push to `main` builds on GitHub (ARM64, to match the Oracle Ampere server) and deploys over SSH.
-Pull requests only build, as a check. Workflow: `.github/workflows/deploy.yml`.
+Every push to `main` builds on GitHub (ARM64, to match the Oracle Ampere server) inside the `staging` environment and deploys over SSH.
+Pull requests only build, as a check, with no access to secrets or the server. Workflow: `.github/workflows/deploy.yml`.
 
 ```
 ~/apps/elite/                  (APP_DIR, in the site user's home)
@@ -97,21 +97,23 @@ Pull requests only build, as a check. Workflow: `.github/workflows/deploy.yml`.
    ```bash
    ssh-keygen -t ed25519 -N '' -C elite-deploy -f elite_deploy
    ```
-6. **GitHub → Settings → Secrets and variables → Actions:**
+6. **GitHub → Settings → Environments → `staging`.** The deploy job runs in this environment, and its secrets are only visible there:
 
    | Kind | Name | Value |
    | --- | --- | --- |
    | Secret | `SSH_HOST` | server IP or hostname |
    | Secret | `SSH_PORT` | usually `22` |
-   | Secret | `SSH_USER` | the CloudPanel site user |
-   | Secret | `SSH_PRIVATE_KEY` | contents of `elite_deploy` (private key) |
-   | Secret | `SSH_KNOWN_HOSTS` | output of `ssh-keyscan -p 22 <server>` (pins the host key) |
-   | Variable | `NEXT_PUBLIC_SITE_URL` | `https://<domain>` |
-   | Variable | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile site key (optional) |
-   | Variable | `APP_PORT` | CloudPanel App Port (default `3000`) |
+   | Secret | `SSH_USER` | the CloudPanel **site user**, not root, so PM2 runs as the site |
+   | Secret | `SSH_PRIVATE_KEY` | contents of `elite_deploy` (the private key) |
+   | Secret | `SSH_KNOWN_HOSTS` | output of `ssh-keyscan -p <SSH_PORT> <SSH_HOST>`; pins the server's host key |
+   | Variable or secret | `NEXT_PUBLIC_SITE_URL` | `https://<domain>` |
+   | Variable or secret | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile site key (optional) |
+   | Variable | `APP_PORT` | CloudPanel App Port (optional, default `3000`) |
    | Variable | `APP_DIR` | optional; defaults to `~/apps/elite` |
 
-   Optional: **Settings → Environments → production → Required reviewers** to approve each deploy.
+   `NEXT_PUBLIC_*` values end up in the public JavaScript, so a variable is the better home for them. A secret also works.
+   Optional: under **Deployment protection rules → Required reviewers**, require approval for each deploy.
+   To add production later, create a `production` environment with its own values and copy the `deploy` job with `environment: production`.
 7. Push to `main`, or use **Actions → Build & deploy → Run workflow**.
 
 ### Day to day

@@ -9,80 +9,67 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || 'deploy-production' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
-  build:
-    # The server is an Oracle Ampere (ARM64) box. Next's standalone bundle includes sharp's
-    # native binary for the build machine, so build on ARM64 to match.
+  # PRs: prove the release builds. No environment, so no secrets and no server access.
+  check:
+    if: github.event_name == 'pull_request'
+    # The server is an Oracle Ampere (ARM64) box and the standalone bundle carries the
+    # build machine's sharp binary, so every build runs on ARM64.
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
-    env:
-      NEXT_TELEMETRY_DISABLED: 1
-      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'https://elitesportsfloorcare.com.au' }}
-      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+    concurrency:
+      group: check-${{ github.event.number }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4 # version comes from package.json "packageManager"
-
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/build-release
         with:
-          node-version: 22
-          cache: pnpm
-
-      - uses: actions/cache@v4
-        with:
-          path: .next/cache
-          key: next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('app/**', 'components/**', 'lib/**', 'content/**', 'styles/**') }}
-          restore-keys: next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}-
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Build (type-check + lint + compile)
-        run: pnpm build
-
-      - name: Package release
-        run: |
-          set -euo pipefail
-          mkdir -p release
-          cp -a .next/standalone/. release/
-          cp -a .next/static release/.next/static
-          cp -a public release/public
-          cp -a drizzle release/drizzle
-          cp ecosystem.config.cjs release/
-          # never ship local env files
-          find release -maxdepth 1 -name '.env*' -delete
-          # sharp must be the linux-arm64 (glibc) build, or images 500 on the server
-          ls release/node_modules/.pnpm | grep -q '^@img+sharp-linux-arm64@' || { echo "::error::linux-arm64 sharp missing from bundle"; exit 1; }
-          tar -czf release.tgz -C release .
-          du -h release.tgz
-
+          site-url: https://example.invalid
       - uses: actions/upload-artifact@v4
         with:
           name: release
-          path: |
-            release.tgz
-            scripts/deploy.sh
-          retention-days: 14
+          path: release.tgz
+          retention-days: 7
 
+  # main / manual: build with the staging environment's values, then ship it.
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 25
     environment:
-      name: production
-      url: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+      name: staging
+      url: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false # never kill a deploy half way; queue the next one
     env:
-      APP_DIR: ${{ vars.APP_DIR }}
-      APP_PORT: ${{ vars.APP_PORT || '3000' }}
+      APP_DIR: ${{ vars.APP_DIR || secrets.APP_DIR }}
+      APP_PORT: ${{ vars.APP_PORT || secrets.APP_PORT || '3000' }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+
+      - name: Check settings
+        env:
+          SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          ok=1
+          for v in SITE_URL SSH_PRIVATE_KEY SSH_HOST SSH_USER; do
+            [ -n "${!v}" ] || { echo "::error::'${v/SITE_URL/NEXT_PUBLIC_SITE_URL}' is not set in the staging environment"; ok=0; }
+          done
+          if [ -z "$SSH_KNOWN_HOSTS" ]; then
+            echo "::error::SSH_KNOWN_HOSTS is not set. On your own machine run:  ssh-keyscan -p <SSH_PORT> <SSH_HOST>  and save the whole output as the SSH_KNOWN_HOSTS secret in the staging environment."
+            ok=0
+          fi
+          [ "$ok" = 1 ]
+
+      - uses: ./.github/actions/build-release
         with:
-          name: release
+          site-url: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
+          turnstile-site-key: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY || secrets.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
 
       - name: Configure SSH (pinned host key)
         env:
@@ -93,12 +80,9 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           set -euo pipefail
-          for v in SSH_PRIVATE_KEY SSH_KNOWN_HOSTS SSH_HOST SSH_USER; do
-            [ -n "${!v}" ] || { echo "::error::secret $v is not set"; exit 1; }
-          done
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
           cat > ~/.ssh/config <<EOF
           Host server
             HostName $SSH_HOST
@@ -108,6 +92,7 @@ jobs:
             IdentitiesOnly yes
             StrictHostKeyChecking yes
             ServerAliveInterval 15
+            ConnectTimeout 20
           EOF
 
       - name: Upload release
